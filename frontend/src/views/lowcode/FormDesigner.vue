@@ -2,8 +2,8 @@
   <div class="form-designer" v-loading="loading">
     <div class="designer-header">
       <div class="header-left">
-        <el-button @click="$router.back()">
-          <el-icon><ArrowLeft /></el-icon>返回
+        <el-button @click="handleBack">
+          <el-icon><ArrowLeft /></el-icon>返回列表
         </el-button>
         <span class="title">表单设计器{{ formId ? ' - 编辑模式' : ' - 新建模式' }}</span>
       </div>
@@ -381,6 +381,10 @@ const moveDown = (index: number) => {
 
 const handlePreview = () => {
   ElMessage.info('预览功能开发中...')
+}
+
+const handleBack = () => {
+  router.push({ name: 'FormList' })
 }
 
 const handleSave = async () => {

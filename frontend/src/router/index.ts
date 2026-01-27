@@ -34,16 +34,28 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '页面管理', icon: 'Document' }
       },
       {
-        path: 'lowcode/form',
-        name: 'FormDesigner',
-        component: () => import('@/views/lowcode/FormDesigner.vue'),
-        meta: { title: '表单设计', icon: 'EditPen' }
+        path: 'lowcode/form/list',
+        name: 'FormList',
+        component: () => import('@/views/lowcode/FormList.vue'),
+        meta: { title: '表单管理', icon: 'Document' }
       },
       {
-        path: 'lowcode/table',
+        path: 'lowcode/form/designer',
+        name: 'FormDesigner',
+        component: () => import('@/views/lowcode/FormDesigner.vue'),
+        meta: { title: '表单设计', hideInMenu: true }
+      },
+      {
+        path: 'lowcode/table/list',
+        name: 'TableList',
+        component: () => import('@/views/lowcode/TableList.vue'),
+        meta: { title: '表格管理', icon: 'Grid' }
+      },
+      {
+        path: 'lowcode/table/designer',
         name: 'TableDesigner',
         component: () => import('@/views/lowcode/TableDesigner.vue'),
-        meta: { title: '表格设计', icon: 'Grid' }
+        meta: { title: '表格设计', hideInMenu: true }
       }
     ]
   }

@@ -40,13 +40,13 @@
             <el-icon><Document /></el-icon>
             <template #title>页面管理</template>
           </el-menu-item>
-          <el-menu-item index="/lowcode/form">
-            <el-icon><EditPen /></el-icon>
-            <template #title>表单设计</template>
+          <el-menu-item index="/lowcode/form/list">
+            <el-icon><Document /></el-icon>
+            <template #title>表单管理</template>
           </el-menu-item>
-          <el-menu-item index="/lowcode/table">
+          <el-menu-item index="/lowcode/table/list">
             <el-icon><Grid /></el-icon>
-            <template #title>表格设计</template>
+            <template #title>表格管理</template>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>
