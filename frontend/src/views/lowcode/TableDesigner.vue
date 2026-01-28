@@ -439,16 +439,30 @@ const handleSave = async () => {
 
     .config-panel {
       width: 300px;
+      min-width: 300px;
+      flex-shrink: 0;
       background-color: #fff;
       border-right: 1px solid #e6e6e6;
+      display: flex;
+      flex-direction: column;
+
+      :deep(.el-tabs) {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+      }
 
       :deep(.el-tabs__header) {
         margin: 0;
         padding: 0 16px;
+        flex-shrink: 0;
       }
 
       :deep(.el-tabs__content) {
         padding: 16px;
+        flex: 1;
+        overflow-y: auto;
       }
 
       .column-list {
@@ -509,25 +523,42 @@ const handleSave = async () => {
 
     .preview-panel {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       background-color: #fff;
       margin: 0 1px;
+      overflow: hidden;
+
+      .panel-title {
+        flex-shrink: 0;
+      }
 
       .preview-area {
         flex: 1;
         padding: 20px;
-        overflow: auto;
+        overflow-x: auto;
+        overflow-y: auto;
       }
     }
 
     .property-panel {
       width: 280px;
+      min-width: 280px;
+      flex-shrink: 0;
       background-color: #fff;
       border-left: 1px solid #e6e6e6;
+      display: flex;
+      flex-direction: column;
+
+      .panel-title {
+        flex-shrink: 0;
+      }
 
       .property-content {
         padding: 16px;
+        flex: 1;
+        overflow-y: auto;
       }
 
       .empty-tip {

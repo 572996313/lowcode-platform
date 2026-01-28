@@ -33,6 +33,36 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'PageDesigner',
         component: () => import('@/views/lowcode/PageDesigner.vue'),
         meta: { title: '页面设计器' }
+      },
+      {
+        path: 'FormDesigner',
+        name: 'FormDesigner',
+        component: () => import('@/views/lowcode/FormDesigner.vue'),
+        meta: { title: '表单设计器' }
+      },
+      {
+        path: 'TableDesigner',
+        name: 'TableDesigner',
+        component: () => import('@/views/lowcode/TableDesigner.vue'),
+        meta: { title: '表格设计器' }
+      },
+      {
+        path: 'FormList',
+        name: 'FormList',
+        component: () => import('@/views/lowcode/FormList.vue'),
+        meta: { title: '表单管理' }
+      },
+      {
+        path: 'TableList',
+        name: 'TableList',
+        component: () => import('@/views/lowcode/TableList.vue'),
+        meta: { title: '表格管理' }
+      },
+      {
+        path: 'PageManage',
+        name: 'PageManage',
+        component: () => import('@/views/lowcode/PageManage.vue'),
+        meta: { title: '页面管理' }
       }
     ]
   }

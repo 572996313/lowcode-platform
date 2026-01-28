@@ -1,10 +1,13 @@
 package com.lowcode.entity;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.annotation.*;
+import com.lowcode.handler.DefaultValueTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.ibatis.type.Alias;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -55,9 +58,10 @@ public class LowFormField implements Serializable {
     private String placeholder;
 
     /**
-     * 默认值
+     * 默认值(存储为JSON字符串，实际值为Object)
      */
-    private String defaultValue;
+    @TableField(typeHandler = DefaultValueTypeHandler.class)
+    private Object defaultValue;
 
     /**
      * 是否必填
