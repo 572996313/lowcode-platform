@@ -20,35 +20,28 @@
           <template #title>首页</template>
         </el-menu-item>
 
-        <el-sub-menu index="system">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/system/menu">
-            <el-icon><Menu /></el-icon>
-            <template #title>菜单管理</template>
-          </el-menu-item>
-        </el-sub-menu>
+        <!-- 动态菜单 -->
+        <template v-for="menu in sidebarMenus" :key="menu.id">
+          <!-- 目录类型 -->
+          <el-sub-menu v-if="menu.menuType === 1" :index="menu.menuCode">
+            <template #title>
+              <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
+              <span>{{ menu.menuName }}</span>
+            </template>
+            <template v-for="child in menu.children" :key="child.id">
+              <el-menu-item v-if="child.menuType === 2 && child.routePath" :index="child.routePath">
+                <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+                <template #title>{{ child.menuName }}</template>
+              </el-menu-item>
+            </template>
+          </el-sub-menu>
 
-        <el-sub-menu index="lowcode">
-          <template #title>
-            <el-icon><Edit /></el-icon>
-            <span>低代码配置</span>
-          </template>
-          <el-menu-item index="/lowcode/page">
-            <el-icon><Document /></el-icon>
-            <template #title>页面管理</template>
+          <!-- 菜单类型（直接在顶层） -->
+          <el-menu-item v-else-if="menu.menuType === 2 && menu.routePath" :index="menu.routePath">
+            <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
+            <template #title>{{ menu.menuName }}</template>
           </el-menu-item>
-          <el-menu-item index="/lowcode/form/list">
-            <el-icon><Document /></el-icon>
-            <template #title>表单管理</template>
-          </el-menu-item>
-          <el-menu-item index="/lowcode/table/list">
-            <el-icon><Grid /></el-icon>
-            <template #title>表格管理</template>
-          </el-menu-item>
-        </el-sub-menu>
+        </template>
       </el-menu>
     </div>
 
@@ -75,7 +68,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>个人中心</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -95,17 +88,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useMenuStore } from '@/stores/menu'
 
 const route = useRoute()
+const router = useRouter()
+const menuStore = useMenuStore()
+
 const isCollapse = ref(false)
 
 const activeMenu = computed(() => route.path)
 
+const sidebarMenus = computed(() => {
+  return menuStore.getSidebarMenus().filter(m => m.status !== false)
+})
+
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  menuStore.reset()
+  router.push('/login')
+}
+
+onMounted(() => {
+  menuStore.loadMenus()
+})
 </script>
 
 <style lang="scss" scoped>
