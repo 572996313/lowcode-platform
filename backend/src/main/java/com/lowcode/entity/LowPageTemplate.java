@@ -10,52 +10,50 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 页面配置实体类
+ * 页面模板实体类
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("low_page_config")
-public class LowPageConfig implements Serializable {
+@TableName("low_page_template")
+public class LowPageTemplate implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
-
-    /**
-     * 页面名称
-     */
-    private String pageName;
-
-    /**
-     * 页面编码
-     */
-    private String pageCode;
-
-    /**
-     * 页面类型(list/form/detail/custom)
-     */
-    private String pageType;
 
     /**
      * 模板ID
      */
-    private Long templateId;
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     /**
-     * 布局类型
+     * 模板名称
+     */
+    private String templateName;
+
+    /**
+     * 模板编码
+     */
+    private String templateCode;
+
+    /**
+     * 模板类型(list/form/detail/dashboard)
+     */
+    private String templateType;
+
+    /**
+     * 布局类型(tree-table/top-bottom/left-right/tabs/custom)
      */
     private String layoutType;
 
     /**
-     * 布局配置JSON
+     * 预览图
      */
-    private String layoutConfig;
+    private String previewImage;
 
     /**
-     * 页面配置JSON
+     * 模板配置JSON
      */
     private String configJson;
 
@@ -65,19 +63,19 @@ public class LowPageConfig implements Serializable {
     private String configTemplate;
 
     /**
-     * 配置版本
+     * 模板描述
      */
-    private Integer configVersion;
+    private String description;
+
+    /**
+     * 是否系统模板
+     */
+    private Boolean isSystem;
 
     /**
      * 状态
      */
-    private Boolean status;
-
-    /**
-     * 备注
-     */
-    private String remark;
+    private Integer status;
 
     /**
      * 是否删除

@@ -10,77 +10,80 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 页面配置实体类
+ * 组件模板实体类
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("low_page_config")
-public class LowPageConfig implements Serializable {
+@TableName("low_component_template")
+public class LowComponentTemplate implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
-
-    /**
-     * 页面名称
-     */
-    private String pageName;
-
-    /**
-     * 页面编码
-     */
-    private String pageCode;
-
-    /**
-     * 页面类型(list/form/detail/custom)
-     */
-    private String pageType;
 
     /**
      * 模板ID
      */
-    private Long templateId;
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     /**
-     * 布局类型
+     * 模板名称
      */
-    private String layoutType;
+    private String templateName;
 
     /**
-     * 布局配置JSON
+     * 模板编码
      */
-    private String layoutConfig;
+    private String templateCode;
 
     /**
-     * 页面配置JSON
+     * 组件类型(container/table/form/custom)
      */
-    private String configJson;
+    private String componentType;
 
     /**
-     * 模板配置JSON(v2版本)
+     * 组件配置JSON模板
      */
     private String configTemplate;
 
     /**
-     * 配置版本
+     * 分类(layout/content)
      */
-    private Integer configVersion;
+    private String category;
+
+    /**
+     * 预览图URL
+     */
+    private String previewImage;
+
+    /**
+     * 描述
+     */
+    private String description;
+
+    /**
+     * 关键词，逗号分隔
+     */
+    private String keywords;
+
+    /**
+     * 系统模板标识
+     */
+    private Boolean isSystem;
+
+    /**
+     * 排序
+     */
+    private Integer sortOrder;
 
     /**
      * 状态
      */
-    private Boolean status;
+    private Integer status;
 
     /**
-     * 备注
-     */
-    private String remark;
-
-    /**
-     * 是否删除
+     * 删除标志
      */
     @TableLogic
     private Integer deleted;

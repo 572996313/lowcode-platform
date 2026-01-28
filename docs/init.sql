@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS low_page_template (
     layout_type VARCHAR(50) COMMENT '布局类型(tree-table/top-bottom/left-right/tabs/custom)',
     preview_image VARCHAR(500) COMMENT '预览图',
     config_json TEXT COMMENT '模板配置JSON',
+    config_template TEXT COMMENT '模板配置JSON(v2版本)',
     description VARCHAR(500) COMMENT '模板描述',
     is_system TINYINT DEFAULT 0 COMMENT '是否系统模板',
     status TINYINT DEFAULT 1 COMMENT '状态',
@@ -74,7 +75,31 @@ CREATE TABLE IF NOT EXISTS low_page_template (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='页面模板表';
 
 -- =============================================
--- 4. 页面配置表
+-- 4. 组件模板表
+-- =============================================
+CREATE TABLE IF NOT EXISTS low_component_template (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '模板ID',
+    template_name VARCHAR(100) NOT NULL COMMENT '模板名称',
+    template_code VARCHAR(100) UNIQUE COMMENT '模板编码',
+    component_type VARCHAR(50) COMMENT '组件类型(container/table/form/custom)',
+    config_template TEXT COMMENT '组件配置JSON模板',
+    category VARCHAR(50) COMMENT '分类(layout/content)',
+    preview_image VARCHAR(500) COMMENT '预览图URL',
+    description VARCHAR(500) COMMENT '描述',
+    keywords VARCHAR(200) COMMENT '关键词，逗号分隔',
+    is_system TINYINT DEFAULT 0 COMMENT '系统模板标识',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '状态',
+    deleted TINYINT DEFAULT 0 COMMENT '删除标志',
+    create_by VARCHAR(64),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category (category),
+    INDEX idx_type (component_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组件模板表';
+
+-- =============================================
+-- 5. 页面配置表
 -- =============================================
 CREATE TABLE IF NOT EXISTS low_page_config (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '页面ID',
@@ -85,6 +110,8 @@ CREATE TABLE IF NOT EXISTS low_page_config (
     layout_type VARCHAR(50) COMMENT '布局类型(tree-table/top-bottom/left-right/tabs/custom)',
     layout_config TEXT COMMENT '布局配置JSON',
     config_json TEXT COMMENT '页面配置JSON',
+    config_template TEXT COMMENT '模板配置JSON(v2版本)',
+    config_version INT DEFAULT 1 COMMENT '配置版本(1=旧版 2=新版)',
     status TINYINT DEFAULT 1 COMMENT '状态',
     remark VARCHAR(500) COMMENT '备注',
     deleted TINYINT DEFAULT 0 COMMENT '是否删除',
@@ -349,7 +376,22 @@ INSERT INTO low_page_template (template_name, template_code, template_type, layo
 ('表单页模板', 'form', 'form', 'custom', '标准表单页面', 1),
 ('详情页模板', 'detail', 'detail', 'custom', '数据详情展示页面', 1),
 ('Tab页签模板', 'tabs', 'custom', 'tabs', '多Tab页签布局', 1),
-('仪表盘模板', 'dashboard', 'dashboard', 'custom', '数据仪表盘页面', 1);
+('仪表盘模板', 'dashboard', 'dashboard', 'custom', '数据仪表盘页面', 1),
+('表单+子表格', 'form-subtables', 'form-detail', 'tabs', '主表单+多个子Tab表格', 1),
+('标准列表页(v2)', 'list_standard', 'list', 'top-bottom', '标准列表页v2版本，查询条件+表格+按钮', 1);
+
+-- 初始化组件模板
+INSERT INTO low_component_template (template_name, template_code, component_type, category, description, keywords, is_system, sort_order) VALUES
+-- 布局容器
+('行布局', 'layout_row', 'container', 'layout', '横向排列子组件', 'row,行,横向', 1, 1),
+('列布局', 'layout_column', 'container', 'layout', '纵向排列子组件', 'column,列,纵向', 1, 2),
+('Tab页签', 'layout_tabs', 'container', 'layout', '创建标签页容器', 'tabs,标签页', 1, 3),
+('卡片', 'layout_card', 'container', 'layout', '卡片容器', 'card,卡片', 1, 4),
+('可折叠区', 'layout_collapsible', 'container', 'layout', '可折叠的内容区域', 'collapsible,折叠', 1, 5),
+-- 内容组件
+('表格', 'content_table', 'table', 'content', '数据表格', 'table,表格', 1, 101),
+('表单', 'content_form', 'form', 'content', '数据表单', 'form,表单', 1, 102),
+('自定义HTML', 'content_custom', 'custom', 'content', '自定义HTML组件', 'custom,自定义', 1, 103);
 
 -- 初始化数据字典
 INSERT INTO sys_dict_type (dict_name, dict_code, remark) VALUES
@@ -389,8 +431,8 @@ INSERT INTO sys_menu (parent_id, menu_name, menu_code, menu_type, icon, sort_ord
 (1, '菜单管理', 'system:menu', 2, 'Menu', 2, '/system/menu', '/views/system/MenuManage.vue'),
 (1, '字典管理', 'system:dict', 2, 'Collection', 3, '/system/dict', '/views/system/DictManage.vue'),
 (2, '页面管理', 'lowcode:page', 2, 'Document', 1, '/lowcode/page', '/views/lowcode/PageManage.vue'),
-(2, '表单设计', 'lowcode:form', 2, 'EditPen', 2, '/lowcode/form', '/views/lowcode/FormDesigner.vue'),
-(2, '表格设计', 'lowcode:table', 2, 'Grid', 3, '/lowcode/table', '/views/lowcode/TableDesigner.vue'),
+(2, '表单管理', 'lowcode:form', 2, 'Document', 2, '/lowcode/form', '/views/lowcode/FormList.vue'),
+(2, '表格管理', 'lowcode:table', 2, 'Grid', 3, '/lowcode/table', '/views/lowcode/TableList.vue'),
 (2, '模板管理', 'lowcode:template', 2, 'Files', 4, '/lowcode/template', '/views/lowcode/TemplateManage.vue');
 
 SELECT '数据库初始化完成!' AS message;

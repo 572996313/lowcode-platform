@@ -26,17 +26,20 @@ export interface ContentAreaConfig {
   showToolbar: boolean
 }
 
-// 页面配置接口
+// 页面配置接口（v1版本，兼容旧版）
 export interface PageConfig {
   id?: number
   pageName: string
   pageCode: string
-  pageType?: 'list' | 'form' | 'custom'
+  pageType?: 'list' | 'form' | 'custom' | 'detail' | 'dashboard'
+  templateId?: number
+  layoutType?: string
   configJson?: string  // 后端存储的是 JSON 字符串
   configJsonObject?: {
-    searchArea: SearchAreaConfig
-    contentArea: ContentAreaConfig
+    searchArea?: SearchAreaConfig
+    contentArea?: ContentAreaConfig
   }  // 前端使用的对象形式
+  configTemplate?: string  // v2版本配置模板
   layoutConfig?: string  // 后端存储的是 JSON 字符串
   layoutConfigObject?: {
     searchAreaHeight?: string
@@ -44,6 +47,95 @@ export interface PageConfig {
   }  // 前端使用的对象形式
   status?: boolean
   description?: string
+  configVersion?: number  // 配置版本
+}
+
+// =============================================
+// 新版配置类型定义 (v2)
+// =============================================
+
+// 配置版本标识
+export const CONFIG_VERSION_V2 = 2
+export const CONFIG_VERSION_V1 = 1
+
+// 基础组件类型
+export interface BaseComponent {
+  id: string
+  type: string
+  name?: string
+  props: Record<string, any>
+  condition?: string
+}
+
+// 容器组件
+export interface ContainerComponent extends BaseComponent {
+  type: 'container'
+  layoutType: 'row' | 'column' | 'tabs' | 'grid' | 'card' | 'collapsible'
+  children: Component[]
+}
+
+// 表格组件
+export interface TableComponent extends BaseComponent {
+  type: 'table'
+  configId?: number
+  props: {
+    showToolbar?: boolean
+    autoLoad?: boolean
+    [key: string]: any
+  }
+}
+
+// 表单组件
+export interface FormComponent extends BaseComponent {
+  type: 'form'
+  configId?: number
+  props: {
+    formType?: 'add' | 'edit' | 'detail' | 'search'
+    mode?: 'toolbar' | 'inline' | 'card'
+    [key: string]: any
+  }
+}
+
+// 组件联合类型
+export type Component = ContainerComponent | TableComponent | FormComponent | BaseComponent
+
+// 新版页面配置结构
+export interface NewPageConfig {
+  version: number
+  page: {
+    title: string
+    description?: string
+  }
+  root: ContainerComponent
+  globalButtons?: any[]
+}
+
+// 组件模板类型
+export interface ComponentTemplate {
+  id: number
+  templateName: string
+  templateCode: string
+  componentType: string
+  configTemplate: string
+  category: 'layout' | 'content'
+  previewImage?: string
+  description: string
+  keywords: string
+  isSystem: boolean
+  sortOrder: number
+}
+
+// 页面模板类型
+export interface PageTemplate {
+  id: number
+  templateName: string
+  templateCode: string
+  templateType: string
+  layoutType: string
+  configTemplate?: string
+  previewImage?: string
+  description: string
+  isSystem: boolean
 }
 
 // 分页结果接口
@@ -98,4 +190,153 @@ export const deletePage = (id: number) => {
 // 获取所有页面（不分页，用于下拉选择）
 export const getAllPages = () => {
   return request.get<PageConfig[]>('/page/all')
+}
+
+// =============================================
+// 模板相关接口（v2）
+// =============================================
+
+// 获取组件模板列表（分页）
+export const getComponentTemplates = (params?: {
+  current?: number
+  size?: number
+  keyword?: string
+  category?: string
+  componentType?: string
+}) => {
+  return request.get<PageResult<ComponentTemplate>>('/component-template/list', params)
+}
+
+// 获取组件模板列表（不分页）
+export const getComponentTemplatesAll = (params?: {
+  category?: string
+  componentType?: string
+}) => {
+  return request.get<ComponentTemplate[]>('/component-template/all', params)
+}
+
+// 获取组件模板详情
+export const getComponentTemplate = (id: number) => {
+  return request.get<ComponentTemplate>(`/component-template/${id}`)
+}
+
+// 获取页面模板列表
+export const getPageTemplates = () => {
+  return request.get<PageTemplate[]>('/page/template/list')
+}
+
+// 获取页面模板详情
+export const getPageTemplate = (id: number) => {
+  return request.get<PageTemplate>(`/page/template/${id}`)
+}
+
+// 从模板创建页面
+export const createPageFromTemplate = (params: {
+  templateCode: string
+  pageName: string
+  pageCode: string
+}) => {
+  return request.post<number>('/page/template/from-template', params)
+}
+
+// =============================================
+// 配置迁移工具
+// =============================================
+
+/**
+ * 获取默认配置
+ */
+export const getDefaultConfig = (): NewPageConfig => ({
+  version: 2,
+  page: { title: '' },
+  root: {
+    id: 'root',
+    type: 'container',
+    layoutType: 'column',
+    children: []
+  }
+})
+
+/**
+ * 配置迁移：将 v1 配置升级到 v2
+ */
+export const migrateConfig = (config: any): NewPageConfig => {
+  if (config.version === 2) {
+    return config as NewPageConfig
+  }
+
+  // v1 配置迁移逻辑
+  const newConfig: NewPageConfig = {
+    version: 2,
+    page: { title: '', description: '' },
+    root: {
+      id: 'root_migrated',
+      type: 'container',
+      layoutType: 'column',
+      children: []
+    }
+  }
+
+  if (config.configJsonObject) {
+    const { searchArea, contentArea } = config.configJsonObject
+
+    // 迁移查询区
+    if (searchArea && searchArea.enabled) {
+      newConfig.root.children?.push({
+        id: 'search_section',
+        type: 'container',
+        name: searchArea.title || '查询条件',
+        layoutType: 'collapsible',
+        props: { title: searchArea.title || '查询条件', defaultCollapsed: false },
+        children: []
+      })
+    }
+
+    // 迁移内容区
+    if (contentArea) {
+      if (contentArea.type === 'table') {
+        newConfig.root.children?.push({
+          id: 'main_table',
+          type: 'table',
+          name: contentArea.title || '数据表格',
+          props: { showToolbar: contentArea.showToolbar }
+        })
+      } else if (contentArea.type === 'form') {
+        newConfig.root.children?.push({
+          id: 'main_form',
+          type: 'form',
+          name: contentArea.title || '数据表单',
+          props: {}
+        })
+      }
+    }
+  }
+
+  return newConfig
+}
+
+/**
+ * 解析配置JSON字符串
+ */
+export const parseConfigJson = (jsonStr?: string): any => {
+  if (!jsonStr) return getDefaultConfig()
+  try {
+    const config = JSON.parse(jsonStr)
+    return migrateConfig(config)
+  } catch (e) {
+    console.error('解析配置JSON失败:', e)
+    return getDefaultConfig()
+  }
+}
+
+/**
+ * 序列化配置对象为JSON字符串
+ */
+export const stringifyConfigJson = (config: NewPageConfig): string => {
+  try {
+    return JSON.stringify(config)
+  } catch (e) {
+    console.error('序列化配置JSON失败:', e)
+    return JSON.stringify(getDefaultConfig())
+  }
 }
