@@ -22,6 +22,19 @@ const staticRoutes: RouteRecordRaw[] = [
         meta: { title: '首页', icon: 'HomeFilled' }
       }
     ]
+  },
+  {
+    path: '/lowcode',
+    name: 'Lowcode',
+    component: () => import('@/views/layout/index.vue'),
+    children: [
+      {
+        path: 'PageDesigner',
+        name: 'PageDesigner',
+        component: () => import('@/views/lowcode/PageDesigner.vue'),
+        meta: { title: '页面设计器' }
+      }
+    ]
   }
 ]
 

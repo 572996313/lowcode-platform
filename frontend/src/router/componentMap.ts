@@ -3,6 +3,7 @@
 export const componentMap: Record<string, () => Promise<any>> = {
   '/views/system/MenuManage.vue': () => import('@/views/system/MenuManage.vue'),
   '/views/lowcode/PageManage.vue': () => import('@/views/lowcode/PageManage.vue'),
+  '/views/lowcode/PageDesigner.vue': () => import('@/views/lowcode/PageDesigner.vue'),
   '/views/lowcode/FormDesigner.vue': () => import('@/views/lowcode/FormDesigner.vue'),
   '/views/lowcode/TableDesigner.vue': () => import('@/views/lowcode/TableDesigner.vue'),
   '/views/lowcode/FormList.vue': () => import('@/views/lowcode/FormList.vue'),
