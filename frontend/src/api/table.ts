@@ -87,3 +87,8 @@ export const updateTable = (id: number, data: TableConfig) => {
 export const deleteTable = (id: number) => {
   return request.delete(`/table/${id}`)
 }
+
+// 根据表格ID查询按钮
+export const getButtonsByTableId = (tableId: number) => {
+  return request.get(`/button/table/${tableId}`)
+}

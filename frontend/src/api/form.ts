@@ -75,3 +75,8 @@ export const updateForm = (id: number, data: FormConfig) => {
 export const deleteForm = (id: number) => {
   return request.delete(`/form/${id}`)
 }
+
+// 根据表单ID查询按钮
+export const getButtonsByFormId = (formId: number) => {
+  return request.get(`/button/form/${formId}`)
+}

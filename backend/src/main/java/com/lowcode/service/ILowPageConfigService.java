@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.lowcode.common.PageResult;
 import com.lowcode.entity.LowPageConfig;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,4 +36,19 @@ public interface ILowPageConfigService extends IService<LowPageConfig> {
      * 删除页面配置
      */
     void deletePageConfig(Long id);
+
+    /**
+     * 发布页面
+     */
+    Long publishPage(Long id, String routePath);
+
+    /**
+     * 取消发布页面
+     */
+    void unpublishPage(Long id);
+
+    /**
+     * 获取已发布的页面列表
+     */
+    List<LowPageConfig> getPublishedPages();
 }

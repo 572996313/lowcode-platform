@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -105,5 +107,61 @@ public class LowPageConfigServiceImpl extends ServiceImpl<LowPageConfigMapper, L
     public void deletePageConfig(Long id) {
         removeById(id);
         log.info("删除页面配置成功, id: {}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long publishPage(Long id, String routePath) {
+        LowPageConfig pageConfig = getById(id);
+        if (pageConfig == null) {
+            throw new BusinessException("页面配置不存在");
+        }
+
+        // 检查路由路径是否已被占用
+        if (StrUtil.isNotBlank(routePath)) {
+            long count = lambdaQuery()
+                    .eq(LowPageConfig::getRoutePath, routePath)
+                    .eq(LowPageConfig::getPublished, true)
+                    .ne(LowPageConfig::getId, id)
+                    .count();
+            if (count > 0) {
+                throw new BusinessException("该路由路径已被使用");
+            }
+        }
+
+        // 更新发布状态
+        pageConfig.setRoutePath(routePath);
+        pageConfig.setPublished(true);
+        pageConfig.setPublishTime(LocalDateTime.now());
+        updateById(pageConfig);
+
+        log.info("发布页面成功, id: {}, routePath: {}", id, routePath);
+        return pageConfig.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unpublishPage(Long id) {
+        LowPageConfig pageConfig = getById(id);
+        if (pageConfig == null) {
+            throw new BusinessException("页面配置不存在");
+        }
+
+        // 取消发布
+        pageConfig.setPublished(false);
+        pageConfig.setRoutePath(null);
+        pageConfig.setPublishTime(null);
+        updateById(pageConfig);
+
+        log.info("取消发布页面成功, id: {}", id);
+    }
+
+    @Override
+    public List<LowPageConfig> getPublishedPages() {
+        return lambdaQuery()
+                .eq(LowPageConfig::getPublished, true)
+                .eq(LowPageConfig::getStatus, true)
+                .orderByAsc(LowPageConfig::getUpdateTime)
+                .list();
     }
 }

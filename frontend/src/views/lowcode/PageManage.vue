@@ -45,10 +45,34 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column prop="published" label="发布状态" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.published" type="success">已发布</el-tag>
+          <el-tag v-else type="info">未发布</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="routePath" label="路由路径" min-width="120" show-overflow-tooltip />
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="handleDesign(row)">设计</el-button>
           <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+          <el-button
+            v-if="!row.published"
+            type="success"
+            link
+            @click="handlePublish(row)"
+          >
+            发布
+          </el-button>
+          <el-button
+            v-else
+            type="warning"
+            link
+            @click="handleUnpublish(row)"
+          >
+            取消发布
+          </el-button>
+          <el-button type="primary" link @click="handlePreview(row)">预览</el-button>
           <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -177,6 +201,8 @@ import {
   createPage,
   updatePage,
   deletePage,
+  publishPage,
+  unpublishPage,
   getPageTemplates,
   createPageFromTemplate,
   type PageConfig,
@@ -377,6 +403,46 @@ const handleDelete = async (row: PageConfig) => {
   } catch (error) {
     // 取消删除
   }
+}
+
+// 发布页面
+const handlePublish = async (row: PageConfig) => {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '请输入路由路径（如 /user/list）',
+      '发布页面',
+      {
+        inputValue: row.routePath || `/${row.pageCode}`,
+        inputPattern: /^\/[a-zA-Z0-9/_-]+$/,
+        inputErrorMessage: '路由路径格式不正确，必须以 / 开头，只包含字母、数字、下划线、连字符和斜杠'
+      }
+    )
+
+    await publishPage(row.id!, { routePath: value })
+    ElMessage.success('发布成功')
+    loadData()
+  } catch (error) {
+    // 取消发布
+  }
+}
+
+// 取消发布
+const handleUnpublish = async (row: PageConfig) => {
+  try {
+    await ElMessageBox.confirm('确定要取消发布该页面吗？', '提示', { type: 'warning' })
+    await unpublishPage(row.id!)
+    ElMessage.success('已取消发布')
+    loadData()
+  } catch (error) {
+    // 取消操作
+  }
+}
+
+// 预览页面
+const handlePreview = (row: PageConfig) => {
+  // 统一使用预览路由，通过 query 参数传递页面 ID
+  const previewUrl = `${window.location.origin}/page/preview?id=${row.id}`
+  window.open(previewUrl, '_blank')
 }
 
 onMounted(() => {

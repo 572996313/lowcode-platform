@@ -1,7 +1,11 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { markRaw } from 'vue'
 import type { ButtonConfig } from '@/api/button'
 import router from '@/router'
 import { request } from './request'
+import { useDialogManager } from './dialogManager'
+import { useDrawerManager } from './drawerManager'
+import FormRender from '@/components/render/FormRender.vue'
 
 /**
  * 按钮动作配置接口
@@ -57,6 +61,8 @@ export interface ConfirmConfig {
 export class ButtonActionHandler {
   private context: any
   private refreshCallback?: () => void
+  private dialogManager = useDialogManager()
+  private drawerManager = useDrawerManager()
 
   constructor(context?: any, refreshCallback?: () => void) {
     this.context = context || {}
@@ -150,17 +156,96 @@ export class ButtonActionHandler {
    * 打开表单弹窗
    */
   private async openDialog(config: ActionConfig): Promise<void> {
-    ElMessage.info('打开弹窗功能待实现')
-    // TODO: 实现弹窗打开逻辑
-    // 可以通过事件总线或全局状态管理触发弹窗
+    // 构建数据URL
+    let dataUrl = config.dataUrl
+    if (config.mode === 'edit' && config.dataUrl) {
+      // 支持模板字符串 {{row.id}}
+      dataUrl = this.evaluateTemplate(config.dataUrl)
+    }
+
+    // 构建提交URL
+    let submitUrl = config.submitUrl || ''
+    if (submitUrl) {
+      submitUrl = this.evaluateTemplate(submitUrl)
+    }
+
+    await this.dialogManager.openDialog({
+      id: `dialog_${Date.now()}`,
+      title: config.title || '表单',
+      width: config.width || '600px',
+      component: markRaw(FormRender),
+      componentProps: {
+        configId: config.formId,
+        mode: config.mode || 'add'
+      },
+      mode: config.mode || 'add',
+      dataUrl,
+      submitUrl,
+      onSuccess: () => {
+        if (config.successAction?.type === 'close') {
+          // 默认行为
+        } else if (config.successAction?.type === 'refresh' && this.refreshCallback) {
+          this.refreshCallback()
+        } else if (config.successAction?.type === 'redirect' && config.successAction.redirectUrl) {
+          router.push(config.successAction.redirectUrl)
+        } else {
+          // 默认刷新
+          this.refreshCallback?.()
+        }
+
+        if (config.successAction?.message) {
+          ElMessage.success(config.successAction.message)
+        }
+      }
+    })
   }
 
   /**
    * 打开抽屉
    */
   private async openDrawer(config: ActionConfig): Promise<void> {
-    ElMessage.info('打开抽屉功能待实现')
-    // TODO: 实现抽屉打开逻辑
+    // 构建数据URL
+    let dataUrl = config.dataUrl
+    if (config.mode === 'edit' && config.dataUrl) {
+      // 支持模板字符串 {{row.id}}
+      dataUrl = this.evaluateTemplate(config.dataUrl)
+    }
+
+    // 构建提交URL
+    let submitUrl = config.submitUrl || ''
+    if (submitUrl) {
+      submitUrl = this.evaluateTemplate(submitUrl)
+    }
+
+    await this.drawerManager.openDrawer({
+      id: `drawer_${Date.now()}`,
+      title: config.title || '详情',
+      size: config.size || 'default',
+      component: markRaw(FormRender),
+      componentProps: {
+        configId: config.formId,
+        mode: config.mode || 'add'
+      },
+      mode: config.mode || 'add',
+      dataUrl,
+      submitUrl,
+      onSuccess: () => {
+        if (config.successAction?.type === 'close') {
+          // 默认行为
+        } else if (config.successAction?.type === 'refresh' && this.refreshCallback) {
+          this.refreshCallback()
+        } else if (config.successAction?.type === 'redirect' && config.successAction.redirectUrl) {
+          router.push(config.successAction.redirectUrl)
+        } else {
+          // 默认刷新
+          this.refreshCallback?.()
+        }
+
+        if (config.successAction?.message) {
+          ElMessage.success(config.successAction.message)
+        }
+      }
+    })
   }
 
   /**

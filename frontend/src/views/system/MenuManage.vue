@@ -86,6 +86,14 @@
             <el-radio :value="3">按钮</el-radio>
           </el-radio-group>
         </el-form-item>
+        <template v-if="form.menuType === 2">
+          <el-form-item label="组件来源">
+            <el-radio-group v-model="componentSource">
+              <el-radio value="static">静态组件</el-radio>
+              <el-radio value="dynamic">低代码页面</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </template>
         <el-form-item label="菜单名称" prop="menuName">
           <el-input v-model="form.menuName" placeholder="请输入菜单名称" />
         </el-form-item>
@@ -95,11 +103,43 @@
         <el-form-item label="图标" prop="icon" v-if="form.menuType !== 3">
           <el-input v-model="form.icon" placeholder="请输入图标名称" />
         </el-form-item>
-        <el-form-item label="路由地址" prop="routePath" v-if="form.menuType !== 3">
-          <el-input v-model="form.routePath" placeholder="请输入路由地址" />
+        <el-form-item label="组件路径" prop="componentPath" v-if="form.menuType === 2 && componentSource === 'static'">
+          <el-select v-model="form.componentPath" placeholder="请选择组件路径" style="width: 100%">
+            <el-option label="用户管理 /views/system/UserManage.vue" value="/views/system/UserManage.vue" />
+            <el-option label="角色管理 /views/system/RoleManage.vue" value="/views/system/RoleManage.vue" />
+            <el-option label="菜单管理 /views/system/MenuManage.vue" value="/views/system/MenuManage.vue" />
+            <el-option label="页面管理 /views/lowcode/PageManage.vue" value="/views/lowcode/PageManage.vue" />
+            <el-option label="表单管理 /views/lowcode/FormManage.vue" value="/views/lowcode/FormManage.vue" />
+            <el-option label="表格管理 /views/lowcode/TableManage.vue" value="/views/lowcode/TableManage.vue" />
+            <el-option label="按钮管理 /views/lowcode/ButtonManage.vue" value="/views/lowcode/ButtonManage.vue" />
+            <el-option label="页面设计器 /views/lowcode/PageDesigner.vue" value="/views/lowcode/PageDesigner.vue" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="组件路径" prop="componentPath" v-if="form.menuType === 2">
-          <el-input v-model="form.componentPath" placeholder="请输入组件路径" />
+        <el-form-item label="低代码页面" prop="pageId" v-if="form.menuType === 2 && componentSource === 'dynamic'">
+          <el-select
+            v-model="form.pageId"
+            placeholder="请选择已发布的页面"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="page in publishedPages"
+              :key="page.id"
+              :label="`${page.pageName} (${page.routePath})`"
+              :value="page.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="路由地址" prop="routePath" v-if="form.menuType !== 3">
+          <el-input
+            v-model="form.routePath"
+            :disabled="componentSource === 'dynamic' && form.pageId"
+            placeholder="请输入路由地址"
+          >
+            <template #append v-if="componentSource === 'dynamic' && form.pageId">
+              <el-button @click="autoFillRoutePath">自动填充</el-button>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="form.sortOrder" :min="0" />
@@ -117,18 +157,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getMenuTree, createMenu, updateMenu, deleteMenu, type Menu } from '@/api/menu'
+import { getPublishedPages, type PageConfig } from '@/api/page'
 
 const loading = ref(false)
 const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref<FormInstance>()
+const componentSource = ref('static')
 
 const menuTree = ref<Menu[]>([])
+const publishedPages = ref<PageConfig[]>([])
 const queryParams = reactive({
   menuName: ''
 })
@@ -185,15 +228,43 @@ const resetForm = () => {
     icon: '',
     routePath: '',
     componentPath: '',
+    pageId: undefined,
     sortOrder: 0,
     status: true
   })
+  componentSource.value = 'static'
+}
+
+// 加载已发布的页面列表
+const loadPublishedPages = async () => {
+  try {
+    publishedPages.value = await getPublishedPages()
+  } catch (error) {
+    console.error('加载已发布页面失败:', error)
+  }
+}
+
+// 自动填充路由路径
+const autoFillRoutePath = () => {
+  const page = publishedPages.value.find(p => p.id === form.pageId)
+  if (page && page.routePath) {
+    form.routePath = page.routePath
+    form.componentPath = '/views/lowcode/PageRender.vue'
+  }
+}
+
+// 监听选择的页面变化
+const handlePageChange = () => {
+  if (componentSource.value === 'dynamic' && form.pageId) {
+    autoFillRoutePath()
+  }
 }
 
 const handleAdd = () => {
   resetForm()
   dialogTitle.value = '新增菜单'
   dialogVisible.value = true
+  loadPublishedPages()
 }
 
 const handleAddChild = (row: Menu) => {
@@ -205,8 +276,15 @@ const handleAddChild = (row: Menu) => {
 
 const handleEdit = (row: Menu) => {
   Object.assign(form, row)
+  // 如果菜单关联了低代码页面，设置为动态模式
+  if (row.pageId) {
+    componentSource.value = 'dynamic'
+  } else {
+    componentSource.value = 'static'
+  }
   dialogTitle.value = '编辑菜单'
   dialogVisible.value = true
+  loadPublishedPages()
 }
 
 const handleDelete = async (row: Menu) => {
@@ -246,6 +324,13 @@ const handleSubmit = async () => {
     }
   })
 }
+
+// 监听页面选择变化
+watch(() => form.pageId, () => {
+  if (componentSource.value === 'dynamic' && form.pageId) {
+    autoFillRoutePath()
+  }
+})
 
 onMounted(() => {
   loadMenuTree()

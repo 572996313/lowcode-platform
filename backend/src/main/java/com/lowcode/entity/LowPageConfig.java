@@ -70,6 +70,21 @@ public class LowPageConfig implements Serializable {
     private Integer configVersion;
 
     /**
+     * 路由路径
+     */
+    private String routePath;
+
+    /**
+     * 是否已发布
+     */
+    private Boolean published;
+
+    /**
+     * 发布时间
+     */
+    private LocalDateTime publishTime;
+
+    /**
      * 状态
      */
     private Boolean status;

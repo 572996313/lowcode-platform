@@ -58,4 +58,26 @@ public class PageConfigController {
         pageConfigService.deletePageConfig(id);
         return Result.success();
     }
+
+    @PostMapping("/{id}/publish")
+    @Operation(summary = "发布页面")
+    public Result<Long> publishPage(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        String routePath = request.get("routePath");
+        Long pageId = pageConfigService.publishPage(id, routePath);
+        return Result.success(pageId);
+    }
+
+    @PostMapping("/{id}/unpublish")
+    @Operation(summary = "取消发布页面")
+    public Result<Void> unpublishPage(@PathVariable Long id) {
+        pageConfigService.unpublishPage(id);
+        return Result.success();
+    }
+
+    @GetMapping("/published")
+    @Operation(summary = "获取已发布的页面列表")
+    public Result<java.util.List<LowPageConfig>> getPublishedPages() {
+        java.util.List<LowPageConfig> pages = pageConfigService.getPublishedPages();
+        return Result.success(pages);
+    }
 }

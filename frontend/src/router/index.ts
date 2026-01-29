@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
 import { getComponent } from './componentMap'
+import { getPublishedPages } from '@/api/page'
 
 const staticRoutes: RouteRecordRaw[] = [
   {
@@ -38,6 +39,12 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'TableDesigner',
         component: () => import('@/views/lowcode/TableDesigner.vue'),
         meta: { title: '表格设计器' }
+      },
+      {
+        path: 'page/preview',
+        name: 'PagePreview',
+        component: () => import('@/views/lowcode/PageRender.vue'),
+        meta: { title: '页面预览' }
       }
     ]
   }
@@ -101,6 +108,35 @@ export const addDynamicRoutes = async () => {
   dynamicRoutes.forEach(route => {
     router.addRoute('Layout', route)
   })
+
+  // 加载已发布的低代码页面路由
+  try {
+    const publishedPages = await getPublishedPages()
+    console.log('加载已发布页面数:', publishedPages.length)
+
+    publishedPages.forEach(page => {
+      if (page.routePath && page.id) {
+        // routePath 可能是 /user/list 或 user/list
+        let routePath = page.routePath
+        if (routePath.startsWith('/')) {
+          // 移除开头的 /
+          routePath = routePath.substring(1)
+        }
+
+        router.addRoute('Layout', {
+          path: routePath,
+          name: `Page_${page.id}`,
+          component: () => import('@/views/lowcode/PageRender.vue'),
+          meta: {
+            title: page.pageName,
+            pageId: page.id
+          }
+        })
+      }
+    })
+  } catch (error) {
+    console.error('加载已发布页面路由失败:', error)
+  }
 }
 
 // 路由守卫

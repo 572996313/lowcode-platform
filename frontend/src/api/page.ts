@@ -48,6 +48,9 @@ export interface PageConfig {
   status?: boolean
   description?: string
   configVersion?: number  // 配置版本
+  routePath?: string  // 路由路径
+  published?: boolean  // 是否已发布
+  publishTime?: string  // 发布时间
 }
 
 // =============================================
@@ -185,6 +188,21 @@ export const updatePage = (id: number, data: Partial<PageConfig>) => {
 // 删除页面
 export const deletePage = (id: number) => {
   return request.delete(`/page/${id}`)
+}
+
+// 发布页面
+export const publishPage = (id: number, data: { routePath: string }) => {
+  return request.post<number>(`/page/${id}/publish`, data)
+}
+
+// 取消发布页面
+export const unpublishPage = (id: number) => {
+  return request.post(`/page/${id}/unpublish`)
+}
+
+// 获取已发布的页面
+export const getPublishedPages = () => {
+  return request.get<PageConfig[]>('/page/published')
 }
 
 // 获取所有页面（不分页，用于下拉选择）
