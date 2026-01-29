@@ -389,8 +389,8 @@ INSERT INTO sys_menu (parent_id, menu_name, menu_code, menu_type, icon, sort_ord
 (1, '菜单管理', 'system:menu', 2, 'Menu', 2, '/system/menu', '/views/system/MenuManage.vue'),
 (1, '字典管理', 'system:dict', 2, 'Collection', 3, '/system/dict', '/views/system/DictManage.vue'),
 (2, '页面管理', 'lowcode:page', 2, 'Document', 1, '/lowcode/page', '/views/lowcode/PageManage.vue'),
-(2, '表单设计', 'lowcode:form', 2, 'EditPen', 2, '/lowcode/form', '/views/lowcode/FormDesigner.vue'),
-(2, '表格设计', 'lowcode:table', 2, 'Grid', 3, '/lowcode/table', '/views/lowcode/TableDesigner.vue'),
+(2, '表单列表', 'lowcode:form', 2, 'EditPen', 2, '/lowcode/form', '/views/lowcode/FormList.vue'),
+(2, '表格列表', 'lowcode:table', 2, 'Grid', 3, '/lowcode/table', '/views/lowcode/TableList.vue'),
 (2, '模板管理', 'lowcode:template', 2, 'Files', 4, '/lowcode/template', '/views/lowcode/TemplateManage.vue');
 
 SELECT '数据库初始化完成!' AS message;

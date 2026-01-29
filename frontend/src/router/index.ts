@@ -20,19 +20,24 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'Home',
         component: () => import('@/views/home/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
-      }
-    ]
-  },
-  {
-    path: '/lowcode',
-    name: 'Lowcode',
-    component: () => import('@/views/layout/index.vue'),
-    children: [
+      },
       {
-        path: 'PageDesigner',
+        path: 'lowcode/PageDesigner',
         name: 'PageDesigner',
         component: () => import('@/views/lowcode/PageDesigner.vue'),
         meta: { title: '页面设计器' }
+      },
+      {
+        path: 'lowcode/form/designer',
+        name: 'FormDesigner',
+        component: () => import('@/views/lowcode/FormDesigner.vue'),
+        meta: { title: '表单设计器' }
+      },
+      {
+        path: 'lowcode/table/designer',
+        name: 'TableDesigner',
+        component: () => import('@/views/lowcode/TableDesigner.vue'),
+        meta: { title: '表格设计器' }
       }
     ]
   }
