@@ -226,7 +226,9 @@ CREATE TABLE IF NOT EXISTS low_button_config (
     button_name VARCHAR(100) COMMENT '按钮名称',
     button_code VARCHAR(100) COMMENT '按钮编码',
     page_id BIGINT COMMENT '所属页面ID',
-    position VARCHAR(50) COMMENT '位置(toolbar/row/form/dialog)',
+    form_id BIGINT COMMENT '关联表单ID',
+    table_id BIGINT COMMENT '关联表格ID',
+    position VARCHAR(50) COMMENT '位置(toolbar/row/form/dialog/footer)',
     button_type VARCHAR(50) DEFAULT 'default' COMMENT '按钮类型(primary/success/warning/danger/info/default)',
     button_size VARCHAR(20) DEFAULT 'default' COMMENT '按钮尺寸(large/default/small)',
     icon VARCHAR(100) COMMENT '图标',
@@ -243,9 +245,12 @@ CREATE TABLE IF NOT EXISTS low_button_config (
     is_visible TINYINT DEFAULT 1 COMMENT '是否显示',
     show_condition TEXT COMMENT '显示条件表达式',
     deleted TINYINT DEFAULT 0 COMMENT '是否删除',
+    create_by VARCHAR(64) COMMENT '创建者',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_page_id (page_id),
+    INDEX idx_form_id (form_id),
+    INDEX idx_table_id (table_id),
     INDEX idx_button_code (button_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='按钮配置表';
 
