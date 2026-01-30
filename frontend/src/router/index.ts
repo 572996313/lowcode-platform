@@ -63,6 +63,9 @@ export const addDynamicRoutes = async () => {
   const menus = menuStore.getSidebarMenus()
   console.log('加载菜单数:', menus.length)
 
+  // 用于去重的路由路径集合
+  const registeredRoutes = new Set<string>()
+
   const buildRoutes = (menus: any[]): any[] => {
     const result: any[] = []
     for (const menu of menus) {
@@ -90,19 +93,26 @@ export const addDynamicRoutes = async () => {
           routePath = routePath.substring(1)
         }
 
-        result.push({
-          path: routePath,
-          name: menu.menuCode,
-          component: component,
-          meta: {
-            title: menu.menuName,
-            icon: menu.icon,
-            // 传递菜单信息给占位组件
-            menuName: menu.menuName,
-            menuCode: menu.menuCode,
-            isPlaceholder: !menu.componentPath // 标记是否为占位页面
-          }
-        })
+        // 检查路由是否已注册
+        if (registeredRoutes.has(routePath)) {
+          console.warn(`路由 ${routePath} 已注册，跳过菜单路由: ${menu.menuName}`)
+        } else {
+          registeredRoutes.add(routePath)
+          result.push({
+            path: routePath,
+            name: menu.menuCode,
+            component: component,
+            meta: {
+              title: menu.menuName,
+              icon: menu.icon,
+              // 传递菜单信息给占位组件
+              menuName: menu.menuName,
+              menuCode: menu.menuCode,
+              pageId: menu.pageId, // 传递页面ID
+              isPlaceholder: !menu.componentPath // 标记是否为占位页面
+            }
+          })
+        }
       }
 
       if (menu.children && menu.children.length > 0) {
@@ -115,24 +125,27 @@ export const addDynamicRoutes = async () => {
   const dynamicRoutes = buildRoutes(menus)
   console.log('动态路由:', dynamicRoutes)
 
-  // 将动态路由添加到 Layout 下
+  // 将动态路由添加到 Layout 下（菜单路由优先）
   dynamicRoutes.forEach(route => {
     router.addRoute('Layout', route)
   })
 
-  // 加载已发布的低代码页面路由
+  // 加载已发布的低代码页面路由（带参数路由，作为兜底）
   try {
     const publishedPages = await getPublishedPages()
     console.log('加载已发布页面数:', publishedPages.length)
 
     publishedPages.forEach(page => {
-      if (page.routePath && page.id) {
-        // routePath 可能是 /user/list 或 user/list
-        let routePath = page.routePath
-        if (routePath.startsWith('/')) {
-          // 移除开头的 /
-          routePath = routePath.substring(1)
+      if (page.id) {
+        // 使用带参数的路由，避免与菜单路由冲突
+        const routePath = `page/publish/${page.id}`
+
+        // 检查路由是否已注册
+        if (registeredRoutes.has(routePath)) {
+          console.warn(`路由 ${routePath} 已注册，跳过`)
+          return
         }
+        registeredRoutes.add(routePath)
 
         router.addRoute('Layout', {
           path: routePath,
@@ -143,6 +156,7 @@ export const addDynamicRoutes = async () => {
             pageId: page.id
           }
         })
+        console.log(`注册页面路由: ${routePath} -> ${page.pageName}`)
       }
     })
   } catch (error) {

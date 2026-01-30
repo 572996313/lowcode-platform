@@ -10,6 +10,7 @@ import com.lowcode.common.exception.BusinessException;
 import com.lowcode.entity.LowPageConfig;
 import com.lowcode.mapper.LowPageConfigMapper;
 import com.lowcode.service.ILowPageConfigService;
+import com.lowcode.service.ISysMenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class LowPageConfigServiceImpl extends ServiceImpl<LowPageConfigMapper, LowPageConfig> implements ILowPageConfigService {
+
+    private final ISysMenuService menuService;
 
     @Override
     public PageResult<LowPageConfig> getPageList(Map<String, Object> params) {
@@ -152,6 +155,9 @@ public class LowPageConfigServiceImpl extends ServiceImpl<LowPageConfigMapper, L
         pageConfig.setRoutePath(null);
         pageConfig.setPublishTime(null);
         updateById(pageConfig);
+
+        // 同步禁用关联的菜单
+        menuService.batchDisableByPageId(id);
 
         log.info("取消发布页面成功, id: {}", id);
     }

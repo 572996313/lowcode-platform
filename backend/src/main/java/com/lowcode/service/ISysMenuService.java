@@ -29,4 +29,19 @@ public interface ISysMenuService extends IService<SysMenu> {
      * 删除菜单
      */
     void deleteMenu(Long id);
+
+    /**
+     * 根据页面ID查询关联的菜单列表
+     */
+    List<SysMenu> getMenusByPageId(Long pageId);
+
+    /**
+     * 批量更新菜单路由地址
+     */
+    void batchUpdateRoutePath(Long pageId, String newRoutePath);
+
+    /**
+     * 批量禁用菜单（根据页面ID）
+     */
+    void batchDisableByPageId(Long pageId);
 }

@@ -64,4 +64,27 @@ public class MenuController {
         List<SysMenu> menuList = menuService.list();
         return Result.success(menuList);
     }
+
+    @GetMapping("/by-page/{pageId}")
+    @Operation(summary = "根据页面ID查询关联的菜单")
+    public Result<List<SysMenu>> getMenusByPageId(@PathVariable Long pageId) {
+        List<SysMenu> menus = menuService.getMenusByPageId(pageId);
+        return Result.success(menus);
+    }
+
+    @PutMapping("/sync-route")
+    @Operation(summary = "批量更新菜单路由地址")
+    public Result<String> syncRoutePath(
+            @RequestParam Long pageId,
+            @RequestParam String newRoutePath) {
+        menuService.batchUpdateRoutePath(pageId, newRoutePath);
+        return Result.success("路由同步成功");
+    }
+
+    @PutMapping("/disable-by-page/{pageId}")
+    @Operation(summary = "批量禁用菜单（根据页面ID）")
+    public Result<String> disableByPageId(@PathVariable Long pageId) {
+        menuService.batchDisableByPageId(pageId);
+        return Result.success("关联菜单已禁用");
+    }
 }

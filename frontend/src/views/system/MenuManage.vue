@@ -48,6 +48,12 @@
         </template>
       </el-table-column>
       <el-table-column prop="routePath" label="路由地址" width="180" />
+      <el-table-column label="关联页面" width="200">
+        <template #default="{ row }">
+          <el-tag v-if="row.pageId" type="success" size="small">低代码页面 (ID: {{ row.pageId }})</el-tag>
+          <el-tag v-else type="info" size="small">静态组件</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
       <el-table-column prop="status" label="状态" width="80" align="center">
         <template #default="{ row }">

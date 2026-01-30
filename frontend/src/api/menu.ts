@@ -43,3 +43,20 @@ export const updateMenu = (id: number, data: Partial<Menu>) => {
 export const deleteMenu = (id: number) => {
   return request.delete(`/menu/${id}`)
 }
+
+// 根据页面ID查询关联的菜单
+export const getMenusByPageId = (pageId: number) => {
+  return request.get<Menu[]>(`/menu/by-page/${pageId}`)
+}
+
+// 批量更新菜单路由地址
+export const syncRoutePath = (pageId: number, newRoutePath: string) => {
+  return request.put<string>('/menu/sync-route', null, {
+    params: { pageId, newRoutePath }
+  })
+}
+
+// 批量禁用菜单（根据页面ID）
+export const disableByPageId = (pageId: number) => {
+  return request.put<string>(`/menu/disable-by-page/${pageId}`)
+}

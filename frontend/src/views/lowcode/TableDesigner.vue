@@ -614,7 +614,7 @@ const handlePreview = () => {
 }
 
 const handleBack = () => {
-  router.push({ name: 'TableList' })
+  router.back()
 }
 
 const handleSave = async () => {

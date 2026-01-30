@@ -591,7 +591,7 @@ const handlePreview = () => {
 }
 
 const handleBack = () => {
-  router.push({ name: 'FormList' })
+  router.back()
 }
 
 const handleSave = async () => {

@@ -52,6 +52,19 @@
         </template>
       </el-table-column>
       <el-table-column prop="routePath" label="路由路径" min-width="120" show-overflow-tooltip />
+      <el-table-column label="关联菜单" width="120">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.published"
+            type="primary"
+            link
+            @click="handleViewMenus(row)"
+          >
+            查看关联
+          </el-button>
+          <span v-else class="text-muted">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="handleDesign(row)">设计</el-button>
@@ -187,6 +200,32 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 关联菜单查看弹窗 -->
+    <el-dialog
+      v-model="menuDialogVisible"
+      title="关联菜单列表"
+      width="800px"
+    >
+      <el-table :data="linkedMenus" border max-height="400">
+        <el-table-column prop="menuName" label="菜单名称" min-width="150" />
+        <el-table-column prop="menuCode" label="菜单编码" width="150" />
+        <el-table-column prop="routePath" label="路由地址" width="150" />
+        <el-table-column prop="status" label="状态" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status ? 'success' : 'danger'">
+              {{ row.status ? '启用' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template v-if="linkedMenus.length === 0">
+        <el-empty description="暂无关联菜单" />
+      </template>
+      <template #footer>
+        <el-button @click="menuDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -208,12 +247,17 @@ import {
   type PageConfig,
   type PageTemplate
 } from '@/api/page'
+import { getMenusByPageId, type Menu } from '@/api/menu'
 
 const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref<PageConfig[]>([])
 const total = ref(0)
+
+// 关联菜单相关
+const menuDialogVisible = ref(false)
+const linkedMenus = ref<Menu[]>([])
 
 const queryParams = reactive({
   current: 1,
@@ -429,9 +473,19 @@ const handlePublish = async (row: PageConfig) => {
 // 取消发布
 const handleUnpublish = async (row: PageConfig) => {
   try {
-    await ElMessageBox.confirm('确定要取消发布该页面吗？', '提示', { type: 'warning' })
+    // 先查询关联的菜单
+    const menus = await getMenusByPageId(row.id!)
+    let message = '确定要取消发布该页面吗？'
+    if (menus.length > 0) {
+      message = `该页面已被 ${menus.length} 个菜单关联，取消发布后将自动禁用这些菜单。确定要继续吗？`
+    }
+    await ElMessageBox.confirm(message, '提示', { type: 'warning' })
     await unpublishPage(row.id!)
-    ElMessage.success('已取消发布')
+    if (menus.length > 0) {
+      ElMessage.success(`已取消发布，${menus.length} 个关联菜单已禁用`)
+    } else {
+      ElMessage.success('已取消发布')
+    }
     loadData()
   } catch (error) {
     // 取消操作
@@ -445,6 +499,17 @@ const handlePreview = (row: PageConfig) => {
   window.open(previewUrl, '_blank')
 }
 
+// 查看关联菜单
+const handleViewMenus = async (row: PageConfig) => {
+  try {
+    linkedMenus.value = await getMenusByPageId(row.id!)
+    menuDialogVisible.value = true
+  } catch (error) {
+    console.error('加载关联菜单失败:', error)
+    ElMessage.error('加载关联菜单失败')
+  }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -455,6 +520,10 @@ onMounted(() => {
   background-color: #fff;
   padding: 20px;
   border-radius: 4px;
+}
+
+.text-muted {
+  color: #909399;
 }
 
 .template-info {

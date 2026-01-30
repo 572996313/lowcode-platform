@@ -107,6 +107,48 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         log.info("删除菜单成功, id: {}", id);
     }
 
+    @Override
+    public List<SysMenu> getMenusByPageId(Long pageId) {
+        return lambdaQuery()
+                .eq(SysMenu::getPageId, pageId)
+                .list();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchUpdateRoutePath(Long pageId, String newRoutePath) {
+        List<SysMenu> menus = getMenusByPageId(pageId);
+        if (menus.isEmpty()) {
+            log.info("页面 {} 没有关联的菜单，无需更新路由", pageId);
+            return;
+        }
+
+        menus.forEach(menu -> {
+            menu.setRoutePath(newRoutePath);
+        });
+
+        updateBatchById(menus);
+        log.info("批量更新菜单路由成功, pageId: {}, count: {}, newRoutePath: {}",
+                pageId, menus.size(), newRoutePath);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDisableByPageId(Long pageId) {
+        List<SysMenu> menus = getMenusByPageId(pageId);
+        if (menus.isEmpty()) {
+            log.info("页面 {} 没有关联的菜单，无需禁用", pageId);
+            return;
+        }
+
+        menus.forEach(menu -> {
+            menu.setStatus(false);
+        });
+
+        updateBatchById(menus);
+        log.info("批量禁用菜单成功, pageId: {}, count: {}", pageId, menus.size());
+    }
+
     /**
      * 构建菜单树
      */
