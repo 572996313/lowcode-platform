@@ -105,6 +105,7 @@
         </el-form-item>
         <el-form-item label="组件路径" prop="componentPath" v-if="form.menuType === 2 && componentSource === 'static'">
           <el-select v-model="form.componentPath" placeholder="请选择组件路径" style="width: 100%">
+            <el-option label="暂不配置(显示占位页面)" value="" />
             <el-option label="用户管理 /views/system/UserManage.vue" value="/views/system/UserManage.vue" />
             <el-option label="角色管理 /views/system/RoleManage.vue" value="/views/system/RoleManage.vue" />
             <el-option label="菜单管理 /views/system/MenuManage.vue" value="/views/system/MenuManage.vue" />
@@ -114,6 +115,10 @@
             <el-option label="按钮管理 /views/lowcode/ButtonManage.vue" value="/views/lowcode/ButtonManage.vue" />
             <el-option label="页面设计器 /views/lowcode/PageDesigner.vue" value="/views/lowcode/PageDesigner.vue" />
           </el-select>
+          <div class="form-tip">
+            <el-icon><InfoFilled /></el-icon>
+            <span>如果选择"暂不配置"，访问菜单时将显示默认占位页面</span>
+          </div>
         </el-form-item>
         <el-form-item label="低代码页面" prop="pageId" v-if="form.menuType === 2 && componentSource === 'dynamic'">
           <el-select
@@ -342,5 +347,18 @@ onMounted(() => {
   background-color: #fff;
   padding: 20px;
   border-radius: 4px;
+}
+
+.form-tip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+
+  .el-icon {
+    color: var(--el-color-primary);
+  }
 }
 </style>

@@ -68,30 +68,41 @@ export const addDynamicRoutes = async () => {
     for (const menu of menus) {
       if (!menu.status && menu.status !== null) continue
 
-      if (menu.menuType === 2 && menu.routePath && menu.componentPath) {
+      if (menu.menuType === 2 && menu.routePath) {
         // 菜单类型 - 添加到路由
-        const component = getComponent(menu.componentPath)
-        console.log('处理菜单:', menu.menuName, '组件路径:', menu.componentPath, '组件存在:', !!component)
-
-        if (component) {
-          // routePath 可能是 /system/menu 或 system/menu
-          // Vue Router 的子路由不需要前缀 /
-          let routePath = menu.routePath
-          if (routePath.startsWith('/')) {
-            // 移除开头的 /
-            routePath = routePath.substring(1)
-          }
-
-          result.push({
-            path: routePath,
-            name: menu.menuCode,
-            component: component,
-            meta: {
-              title: menu.menuName,
-              icon: menu.icon
-            }
-          })
+        // 尝试获取组件
+        let component = null
+        if (menu.componentPath) {
+          component = getComponent(menu.componentPath)
         }
+
+        // 如果找不到组件，使用占位组件
+        if (!component) {
+          component = getComponent('/views/common/PlaceholderPage.vue')
+          console.warn(`菜单 ${menu.menuName} 未配置组件或组件不存在，使用占位页面`)
+        }
+
+        // routePath 可能是 /system/menu 或 system/menu
+        // Vue Router 的子路由不需要前缀 /
+        let routePath = menu.routePath
+        if (routePath.startsWith('/')) {
+          // 移除开头的 /
+          routePath = routePath.substring(1)
+        }
+
+        result.push({
+          path: routePath,
+          name: menu.menuCode,
+          component: component,
+          meta: {
+            title: menu.menuName,
+            icon: menu.icon,
+            // 传递菜单信息给占位组件
+            menuName: menu.menuName,
+            menuCode: menu.menuCode,
+            isPlaceholder: !menu.componentPath // 标记是否为占位页面
+          }
+        })
       }
 
       if (menu.children && menu.children.length > 0) {

@@ -9,6 +9,7 @@ export const componentMap: Record<string, () => Promise<any>> = {
   '/views/lowcode/FormList.vue': () => import('@/views/lowcode/FormList.vue'),
   '/views/lowcode/TableList.vue': () => import('@/views/lowcode/TableList.vue'),
   '/views/home/index.vue': () => import('@/views/home/index.vue'),
+  '/views/common/PlaceholderPage.vue': () => import('@/views/common/PlaceholderPage.vue'),
 }
 
 // 获取组件
