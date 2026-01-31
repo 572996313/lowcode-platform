@@ -164,4 +164,21 @@ public class LowFormConfigServiceImpl extends ServiceImpl<LowFormConfigMapper, L
             formFieldMapper.insert(field);
         }
     }
+
+    @Override
+    public List<LowFormConfig> getByCategory(String category) {
+        return list(
+                Wrappers.lambdaQuery(LowFormConfig.class)
+                        .eq(LowFormConfig::getComponentCategory, category)
+                        .eq(LowFormConfig::getStatus, true)
+                        .orderByDesc(LowFormConfig::getUpdateTime)
+        );
+    }
+
+    @Override
+    public Long countByCategory(String category) {
+        return lambdaQuery()
+                .eq(LowFormConfig::getComponentCategory, category)
+                .count();
+    }
 }

@@ -195,12 +195,29 @@
             </div>
           </el-tab-pane>
           <el-tab-pane label="表单属性" name="form">
-            <el-form label-width="80px" size="small">
+            <el-form label-width="100px" size="small">
               <el-form-item label="表单名称">
-                <el-input v-model="formConfig.formName" />
+                <el-input v-model="formConfig.formName" placeholder="请输入表单名称" />
               </el-form-item>
               <el-form-item label="表单编码">
-                <el-input v-model="formConfig.formCode" />
+                <el-input v-model="formConfig.formCode" placeholder="请输入表单编码" />
+              </el-form-item>
+              <el-form-item label="组件分类">
+                <el-radio-group v-model="formConfig.componentCategory">
+                  <el-radio label="common">通用组件库</el-radio>
+                  <el-radio label="business">业务组件库</el-radio>
+                </el-radio-group>
+                <div class="form-tip">
+                  通用组件可在所有页面复用，业务组件仅用于特定业务场景
+                </div>
+              </el-form-item>
+              <el-form-item label="组件标签">
+                <el-input
+                  v-model="formConfig.componentTags"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="请输入标签，用逗号分隔（如：system,user,create）"
+                />
               </el-form-item>
               <el-form-item label="标签宽度">
                 <el-input-number v-model="formConfig.labelWidth" :min="60" :max="200" />
@@ -214,125 +231,6 @@
               </el-form-item>
             </el-form>
           </el-tab-pane>
-          <el-tab-pane label="按钮配置" name="buttons">
-            <div class="buttons-config">
-              <div class="config-header">
-                <el-button type="primary" size="small" @click="addFormButton">
-                  <el-icon><Plus /></el-icon>添加按钮
-                </el-button>
-              </div>
-              <div class="button-list">
-                <div
-                  v-for="(button, index) in formButtons"
-                  :key="button.id"
-                  class="button-item"
-                  :class="{ active: selectedButton?.id === button.id }"
-                  @click="selectButton(button)"
-                >
-                  <div class="button-info">
-                    <el-tag :type="button.buttonType || 'default'" size="small">{{ button.buttonName }}</el-tag>
-                    <span class="button-code">{{ button.buttonCode }}</span>
-                  </div>
-                  <div class="button-actions">
-                    <el-icon @click.stop="moveButtonUp(index)" v-if="index > 0"><Top /></el-icon>
-                    <el-icon @click.stop="moveButtonDown(index)" v-if="index < formButtons.length - 1"><Bottom /></el-icon>
-                    <el-icon @click.stop="removeButton(index)" class="danger"><Delete /></el-icon>
-                  </div>
-                </div>
-              </div>
-              <template v-if="selectedButton">
-                <el-divider />
-                <el-form label-width="90px" size="small">
-                  <el-form-item label="按钮名称">
-                    <el-input v-model="selectedButton.buttonName" />
-                  </el-form-item>
-                  <el-form-item label="按钮编码">
-                    <el-input v-model="selectedButton.buttonCode" />
-                  </el-form-item>
-                  <el-form-item label="按钮位置">
-                    <el-select v-model="selectedButton.position">
-                      <el-option label="表单内" value="form" />
-                      <el-option label="表单底部" value="footer" />
-                      <el-option label="弹窗内" value="dialog" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="按钮类型">
-                    <el-select v-model="selectedButton.buttonType">
-                      <el-option label="默认" value="default" />
-                      <el-option label="主要" value="primary" />
-                      <el-option label="成功" value="success" />
-                      <el-option label="警告" value="warning" />
-                      <el-option label="危险" value="danger" />
-                      <el-option label="信息" value="info" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="按钮尺寸">
-                    <el-select v-model="selectedButton.buttonSize">
-                      <el-option label="默认" value="default" />
-                      <el-option label="大" value="large" />
-                      <el-option label="小" value="small" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="图标">
-                    <el-input v-model="selectedButton.icon" placeholder="例如: Search" />
-                  </el-form-item>
-                  <el-form-item label="朴素按钮">
-                    <el-switch v-model="selectedButton.plain" />
-                  </el-form-item>
-                  <el-form-item label="圆角按钮">
-                    <el-switch v-model="selectedButton.round" />
-                  </el-form-item>
-                  <el-form-item label="动作类型">
-                    <el-select v-model="selectedButton.actionType" @change="handleActionTypeChange">
-                      <el-option label="API请求" value="api" />
-                      <el-option label="打开弹窗" value="dialog" />
-                      <el-option label="打开抽屉" value="drawer" />
-                      <el-option label="路由跳转" value="route" />
-                      <el-option label="打开链接" value="link" />
-                      <el-option label="自定义代码" value="custom" />
-                      <el-option label="确认框" value="confirm" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="动作配置" v-if="selectedButton.actionType !== 'custom'">
-                    <el-input
-                      v-model="selectedButton.actionConfig"
-                      type="textarea"
-                      :rows="5"
-                      placeholder='JSON格式，例如: {"url": "/api/submit", "method": "POST"}'
-                    />
-                  </el-form-item>
-                  <el-form-item label="自定义代码" v-if="selectedButton.actionType === 'custom'">
-                    <el-input
-                      v-model="selectedButton.actionConfig"
-                      type="textarea"
-                      :rows="8"
-                      placeholder="JavaScript代码，可使用 row, form, selection 等上下文变量"
-                    />
-                  </el-form-item>
-                  <el-form-item label="确认框配置" v-if="selectedButton.actionType === 'confirm'">
-                    <el-input
-                      v-model="selectedButton.confirmConfig"
-                      type="textarea"
-                      :rows="4"
-                      placeholder='JSON格式，例如: {"title": "确认", "message": "确定要删除吗？"}'
-                    />
-                  </el-form-item>
-                  <el-form-item label="权限标识">
-                    <el-input v-model="selectedButton.perms" placeholder="例如: user:add" />
-                  </el-form-item>
-                  <el-form-item label="显示条件">
-                    <el-input
-                      v-model="selectedButton.showCondition"
-                      placeholder="JavaScript表达式，例如: row.status === 1"
-                    />
-                  </el-form-item>
-                  <el-form-item label="是否显示">
-                    <el-switch v-model="selectedButton.visible" />
-                  </el-form-item>
-                </el-form>
-              </template>
-            </div>
-          </el-tab-pane>
         </el-tabs>
       </div>
     </div>
@@ -344,8 +242,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createForm, updateForm, getFormConfig, type FormConfig, type FormField as ApiFormField } from '@/api/form'
-import type { ButtonConfig } from '@/api/button'
-import { batchSaveButtonsByFormId, getButtonsByFormId } from '@/api/button'
 
 interface FormField {
   id: string
@@ -360,9 +256,7 @@ interface FormField {
   options?: { label: string; value: any }[]
 }
 
-interface FormButton extends ButtonConfig {
-  id: string
-}
+// 按钮相关类型已移除 - 按钮现在从组件库选择
 
 const route = useRoute()
 const router = useRouter()
@@ -376,13 +270,13 @@ const loading = ref(false)
 const formConfig = reactive({
   formName: '',
   formCode: '',
+  componentCategory: 'business' as 'common' | 'business',
+  componentTags: '' as string,
   labelWidth: 100,
   labelPosition: 'right' as 'right' | 'left' | 'top'
 })
 
-// 按钮配置
-const formButtons = ref<FormButton[]>([])
-const selectedButton = ref<FormButton | null>(null)
+// 移除按钮配置相关代码 - 按钮现在从组件库选择
 
 // 加载表单配置(编辑模式)
 const loadFormConfig = async () => {
@@ -395,6 +289,8 @@ const loadFormConfig = async () => {
     // 加载表单基本信息
     formConfig.formName = data.formName
     formConfig.formCode = data.formCode
+    formConfig.componentCategory = (data.componentCategory as any) || 'business'
+    formConfig.componentTags = (data.componentTags as any) || ''
     formConfig.labelWidth = data.labelWidth || 100
     formConfig.labelPosition = (data.labelPosition || 'right') as 'right' | 'left' | 'top'
 
@@ -414,17 +310,7 @@ const loadFormConfig = async () => {
       }))
     }
 
-    // 加载按钮配置
-    try {
-      const buttons = await getButtonsByFormId(formId.value!)
-      formButtons.value = buttons.map((btn: ButtonConfig) => ({
-        ...btn,
-        id: btn.id?.toString() || Date.now().toString()
-      }))
-    } catch (error) {
-      console.error('加载按钮配置失败:', error)
-      // 不阻断主流程，只记录错误
-    }
+    // 按钮配置已从组件库选择，不再在表单设计器中配置
 
     ElMessage.success('加载表单配置成功')
   } catch (error) {
@@ -520,71 +406,6 @@ const moveDown = (index: number) => {
   }
 }
 
-// 按钮相关操作
-const addFormButton = () => {
-  const newButton: FormButton = {
-    id: Date.now().toString(),
-    buttonName: '新按钮',
-    buttonCode: `button_${Date.now()}`,
-    position: 'footer',
-    buttonType: 'default',
-    buttonSize: 'default',
-    actionType: 'api',
-    visible: true,
-    plain: false,
-    round: false,
-    loading: false,
-    disabled: false
-  }
-  formButtons.value.push(newButton)
-  selectedButton.value = newButton
-}
-
-const selectButton = (button: FormButton) => {
-  selectedButton.value = button
-  activeTab.value = 'buttons'
-}
-
-const removeButton = (index: number) => {
-  formButtons.value.splice(index, 1)
-  if (selectedButton.value?.id === formButtons.value[index]?.id) {
-    selectedButton.value = null
-  }
-}
-
-const moveButtonUp = (index: number) => {
-  if (index > 0) {
-    const temp = formButtons.value[index]
-    formButtons.value[index] = formButtons.value[index - 1]
-    formButtons.value[index - 1] = temp
-  }
-}
-
-const moveButtonDown = (index: number) => {
-  if (index < formButtons.value.length - 1) {
-    const temp = formButtons.value[index]
-    formButtons.value[index] = formButtons.value[index + 1]
-    formButtons.value[index + 1] = temp
-  }
-}
-
-const handleActionTypeChange = (actionType: string) => {
-  if (!selectedButton.value) return
-
-  // 根据动作类型设置默认配置
-  const defaultConfigs: Record<string, any> = {
-    api: { url: '/api/submit', method: 'POST' },
-    dialog: { formId: null, title: '弹窗标题', width: '600px', mode: 'add' },
-    drawer: { formId: null, title: '抽屉标题', size: 'medium', mode: 'add' },
-    route: { path: '/', openType: 'push' },
-    link: { path: 'https://example.com' },
-    confirm: { title: '确认操作', message: '确定要执行此操作吗？', type: 'warning' }
-  }
-
-  if (defaultConfigs[actionType]) {
-    selectedButton.value.actionConfig = JSON.stringify(defaultConfigs[actionType], null, 2)
-  }
-}
 
 const handlePreview = () => {
   ElMessage.info('预览功能开发中...')
@@ -615,6 +436,8 @@ const handleSave = async () => {
     const saveData: FormConfig = {
       formName: formConfig.formName,
       formCode: formConfig.formCode,
+      componentCategory: formConfig.componentCategory,
+      componentTags: formConfig.componentTags,
       labelWidth: formConfig.labelWidth,
       labelPosition: formConfig.labelPosition,
       layoutType: 'grid',
@@ -649,22 +472,7 @@ const handleSave = async () => {
       router.replace({ query: { id: id.toString() } })
     }
 
-    // 保存按钮配置
-    if (formButtons.value.length > 0) {
-      try {
-        // 将临时ID转换为正确格式
-        const buttonsToSave = formButtons.value.map(btn => ({
-          ...btn,
-          id: undefined, // 清除临时ID
-          formId: formId.value
-        }))
-        await batchSaveButtonsByFormId(formId.value!, buttonsToSave)
-        ElMessage.success('保存按钮配置成功')
-      } catch (error: any) {
-        console.error('保存按钮配置失败:', error)
-        ElMessage.warning('表单保存成功，但按钮配置保存失败')
-      }
-    }
+    // 按钮配置已从组件库选择，不再在保存时处理
   } catch (error: any) {
     ElMessage.error(error.message || '保存失败')
     console.error(error)
@@ -842,71 +650,6 @@ const handleSave = async () => {
         padding: 40px 0;
       }
 
-      .buttons-config {
-        .config-header {
-          margin-bottom: 16px;
-        }
-
-        .button-list {
-          max-height: 300px;
-          overflow-y: auto;
-
-          .button-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            border: 1px solid #e6e6e6;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-
-            &:hover {
-              border-color: #409eff;
-            }
-
-            &.active {
-              border-color: #409eff;
-              background-color: #ecf5ff;
-            }
-
-            .button-info {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              flex: 1;
-
-              .button-code {
-                font-size: 12px;
-                color: #909399;
-              }
-            }
-
-            .button-actions {
-              display: none;
-              gap: 4px;
-
-              .el-icon {
-                cursor: pointer;
-                color: #909399;
-
-                &:hover {
-                  color: #409eff;
-                }
-
-                &.danger:hover {
-                  color: #f56c6c;
-                }
-              }
-            }
-
-            &:hover .button-actions {
-              display: flex;
-            }
-          }
-        }
-      }
     }
   }
 }

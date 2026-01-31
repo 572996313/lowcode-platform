@@ -123,7 +123,7 @@ import { ElMessage } from 'element-plus'
 import type { PageConfig } from '@/api/page'
 import type { ButtonConfig } from '@/api/button'
 import { getPage } from '@/api/page'
-import { getButtonsByPageId } from '@/api/button'
+import { getButtonsByPageId, getButtonsByIds } from '@/api/button'
 import SearchAreaRender from '@/components/render/SearchAreaRender.vue'
 import TableRender from '@/components/render/TableRender.vue'
 import FormRender from '@/components/render/FormRender.vue'
@@ -238,6 +238,11 @@ const customComponents = computed(() => {
 
 // 按钮配置
 const toolbarButtons = ref<ButtonConfig[]>([])
+// 按钮配置缓存（按ID存储）
+const buttonMap = ref<Map<number, ButtonConfig>>(new Map())
+
+// 提供按钮配置给子组件
+provide('buttonMap', buttonMap)
 
 // 加载页面配置
 const loadPageConfig = async () => {
@@ -245,11 +250,12 @@ const loadPageConfig = async () => {
   error.value = null
   try {
     const pageId = Number(route.meta.pageId || route.params.id || route.query.id)
-    if (!pageId) {
+    if (!pageId || isNaN(pageId)) {
       console.error('页面ID获取失败:', {
         meta: route.meta,
         params: route.params,
-        query: route.query
+        query: route.query,
+        pageId: pageId
       })
       throw new Error('无法获取页面ID，请检查路由配置')
     }
@@ -276,11 +282,8 @@ const loadPageConfig = async () => {
       })
     }
 
-    // 加载按钮配置
-    if (data.id) {
-      const buttons = await getButtonsByPageId(data.id)
-      toolbarButtons.value = buttons.filter((btn: ButtonConfig) => btn.position === 'toolbar')
-    }
+    // 加载按钮配置（支持新旧两种格式）
+    await loadButtons(data)
 
     // 加载树形数据
     if (layoutType.value === 'tree-table' && treeAreaConfig.value?.dataUrl) {
@@ -292,6 +295,87 @@ const loadPageConfig = async () => {
     ElMessage.error(error.value)
   } finally {
     loading.value = false
+  }
+}
+
+// 加载按钮配置（支持新旧两种格式）
+const loadButtons = async (pageConfig: PageConfig) => {
+  try {
+    // 优先使用新格式（configTemplate v2）
+    if (pageConfig.configTemplate && pageConfig.configTemplate.areas) {
+      // 收集所有 buttonId
+      const buttonIds: number[] = []
+      const toolbarButtonRefs: any[] = []
+
+      pageConfig.configTemplate.areas.forEach((area: any) => {
+        // 检查 area.config 中的按钮
+        if (area.config?.buttons && Array.isArray(area.config.buttons)) {
+          area.config.buttons.forEach((btnConfig: any) => {
+            if (btnConfig.buttonId) {
+              buttonIds.push(btnConfig.buttonId)
+              // 如果是工具栏按钮，记录引用
+              if (area.type === 'toolbar') {
+                toolbarButtonRefs.push({
+                  id: btnConfig.id,
+                  buttonId: btnConfig.buttonId,
+                  label: btnConfig.label,
+                  position: 'toolbar'
+                })
+              }
+            }
+          })
+        }
+        // 兼容旧格式：检查 area.props 中的按钮
+        if (area.props?.buttons && Array.isArray(area.props.buttons)) {
+          area.props.buttons.forEach((btnConfig: any) => {
+            if (btnConfig.buttonId) {
+              buttonIds.push(btnConfig.buttonId)
+              if (area.type === 'toolbar') {
+                toolbarButtonRefs.push({
+                  id: btnConfig.id,
+                  buttonId: btnConfig.buttonId,
+                  label: btnConfig.label,
+                  position: 'toolbar'
+                })
+              }
+            }
+          })
+        }
+      })
+
+      // 批量加载按钮配置
+      if (buttonIds.length > 0) {
+        const buttons = await getButtonsByIds(buttonIds)
+        // 缓存按钮配置
+        buttonMap.value = new Map(buttons.map(btn => [btn.id!, btn]))
+      }
+
+      // 设置工具栏按钮（合并引用和完整配置）
+      toolbarButtons.value = toolbarButtonRefs.map(ref => ({
+        ...buttonMap.value.get(ref.buttonId),
+        ...ref
+      }))
+    } else if (pageConfig.configJsonObject) {
+      // 兼容旧格式（configJsonObject v1）
+      // 尝试从 configJsonObject 中读取按钮配置
+      if (pageConfig.configJsonObject.components) {
+        const buttons = pageConfig.configJsonObject.components.filter((c: any) => c.type === 'button')
+        toolbarButtons.value = buttons
+        // 缓存按钮配置
+        buttonMap.value = new Map(buttons.map((btn: any) => [btn.id, btn]))
+      } else if (pageConfig.id) {
+        // 如果 components 为空，尝试通过 pageId 查询（向后兼容）
+        const buttons = await getButtonsByPageId(pageConfig.id)
+        if (buttons && buttons.length > 0) {
+          toolbarButtons.value = buttons.filter((btn: ButtonConfig) => btn.position === 'toolbar')
+          // 缓存按钮配置
+          buttonMap.value = new Map(buttons.map(btn => [btn.id!, btn]))
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载按钮配置失败:', error)
+    // 不阻断主流程
   }
 }
 

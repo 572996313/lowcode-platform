@@ -42,4 +42,14 @@ public interface ILowFormConfigService extends IService<LowFormConfig> {
      * 保存表单字段
      */
     void saveFormFields(Long formId, List<LowFormField> fields);
+
+    /**
+     * 根据组件分类获取表单列表
+     */
+    List<LowFormConfig> getByCategory(String category);
+
+    /**
+     * 统计指定分类的表单数量
+     */
+    Long countByCategory(String category);
 }

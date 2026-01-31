@@ -18,104 +18,96 @@
       <div class="left-panel">
         <div class="panel-title">组件库</div>
 
-        <!-- 查询区组件 -->
-        <div class="component-section">
-          <div class="section-title">查询区</div>
-          <div class="component-list">
-            <div class="component-item" @click="addSearchField('input')">
-              <el-icon><Edit /></el-icon>
-              <span>输入框</span>
-            </div>
-            <div class="component-item" @click="addSearchField('select')">
-              <el-icon><List /></el-icon>
-              <span>下拉框</span>
-            </div>
-            <div class="component-item" @click="addSearchField('date')">
-              <el-icon><Calendar /></el-icon>
-              <span>日期</span>
-            </div>
-            <div class="component-item" @click="addSearchField('dateRange')">
-              <el-icon><Timer /></el-icon>
-              <span>日期范围</span>
-            </div>
-            <div class="component-item" @click="addSearchField('number')">
-              <el-icon><Histogram /></el-icon>
-              <span>数字</span>
-            </div>
-          </div>
+        <!-- 组件库切换标签 -->
+        <el-tabs v-model="activeLibrary" type="card" size="small" class="library-tabs">
+          <el-tab-pane label="通用组件" name="common" />
+          <el-tab-pane label="业务组件" name="business" />
+        </el-tabs>
+
+        <!-- 组件库内容 -->
+        <div v-if="!selectedAreaId" class="empty-hint-panel">
+          <el-empty description="请先选择一个区域进行配置" :image-size="80" />
         </div>
 
-        <!-- 内容区组件 -->
-        <div class="component-section">
-          <div class="section-title">内容区</div>
-          <div class="component-list">
-            <div class="component-item" @click="openComponentSelector('table')">
-              <el-icon><Grid /></el-icon>
-              <span>表格</span>
-            </div>
-            <div class="component-item" @click="openComponentSelector('form')">
-              <el-icon><Document /></el-icon>
-              <span>表单</span>
-            </div>
-          </div>
-        </div>
+        <!-- 使用组件库面板组件 -->
+        <component-library-panel
+          v-else
+          :library-type="activeLibrary as 'common' | 'business'"
+          :area-type="selectedArea?.type"
+          @select="handleComponentSelect"
+          @dragstart="handleDragStart"
+        />
       </div>
 
       <!-- 中间设计画板区域 -->
       <div class="center-panel">
         <div class="design-canvas">
-          <!-- 查询条件区域 -->
-          <div class="search-area-preview">
+          <!-- 动态渲染区域 -->
+          <div
+            v-for="area in templateAreas"
+            :key="area.id"
+            class="area-preview"
+            :class="{
+              'disabled': !pageAreas[area.id]?.enabled,
+              'selected': selectedAreaId === area.id
+            }"
+            @click="selectArea(area.id)"
+          >
             <div class="area-header">
-              <span>查询条件</span>
-              <el-switch v-model="pageConfig.configJsonObject!.searchArea.enabled" size="small" />
+              <el-icon><component :is="getAreaIcon(area.type)" /></el-icon>
+              <span class="area-name">{{ area.name }}</span>
+              <el-switch
+                v-if="pageAreas[area.id]"
+                v-model="pageAreas[area.id].enabled"
+                :disabled="area.required"
+                size="small"
+                @click.stop
+              />
+              <el-tag v-if="area.required" type="danger" size="small">
+                必需
+              </el-tag>
             </div>
-            <div class="area-content" v-show="pageConfig.configJsonObject!.searchArea.enabled">
-              <div v-if="pageConfig.configJsonObject!.searchArea.fields.length === 0" class="empty-hint">
-                从左侧拖入查询条件组件
-              </div>
-              <div v-else class="field-list">
-                <div
-                  v-for="(field, index) in pageConfig.configJsonObject!.searchArea.fields"
-                  :key="field.id"
-                  class="field-item"
-                  :class="{ active: selectedFieldId === field.id }"
-                  @click="selectField(field.id, 'search')"
-                >
-                  <span class="field-label">{{ field.label }}</span>
-                  <el-icon class="delete-icon" @click.stop="removeSearchField(index)">
-                    <CircleClose />
-                  </el-icon>
+            <div class="area-content" v-show="pageAreas[area.id]?.enabled">
+              <!-- 查询区预览 -->
+              <div v-if="area.type === 'search'">
+                <div v-if="!pageAreas[area.id]?.config?.fields?.length" class="empty-hint">
+                  从左侧添加查询字段或点击区域配置
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 内容区域 -->
-          <div class="content-area-preview">
-            <div class="area-header">
-              <span>内容区域</span>
-            </div>
-            <div class="area-content">
-              <div
-                v-if="!pageConfig.configJsonObject!.contentArea.configId"
-                class="empty-hint"
-                @click="openComponentSelector()"
-              >
-                从左侧选择表格或表单组件
-              </div>
-              <div v-else class="content-component" :class="{ active: selectedArea === 'content' }" @click="selectArea('content')">
-                <el-icon>
-                  <Grid v-if="pageConfig.configJsonObject!.contentArea.type === 'table'" />
-                  <Document v-else />
-                </el-icon>
-                <div class="component-info">
-                  <div class="component-title">{{ pageConfig.configJsonObject!.contentArea.title }}</div>
-                  <div class="component-type">
-                    {{ pageConfig.configJsonObject!.contentArea.type === 'table' ? '表格' : '表单' }}
-                    配置ID: {{ pageConfig.configJsonObject!.contentArea.configId }}
+                <div v-else class="field-list">
+                  <div
+                    v-for="(field, index) in pageAreas[area.id]?.config?.fields || []"
+                    :key="field.id"
+                    class="field-item"
+                  >
+                    <span class="field-label">{{ field.label }}</span>
                   </div>
                 </div>
+              </div>
+
+              <!-- 内容区预览 -->
+              <div v-else-if="area.type === 'content'">
+                <div v-if="!pageAreas[area.id]?.config?.configId" class="empty-hint" @click="selectArea(area.id)">
+                  从左侧选择表格或表单组件
+                </div>
+                <div v-else class="content-component">
+                  <el-icon>
+                    <Grid v-if="pageAreas[area.id]?.config?.componentType === 'table'" />
+                    <Document v-else />
+                  </el-icon>
+                  <div class="component-info">
+                    <div class="component-title">{{ pageAreas[area.id]?.config?.title }}</div>
+                    <div class="component-type">
+                      {{ pageAreas[area.id]?.config?.componentType === 'table' ? '表格' : '表单' }}
+                      配置ID: {{ pageAreas[area.id]?.config?.configId }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 其他区域预览 -->
+              <div v-else class="generic-hint">
+                <el-icon><component :is="getAreaIcon(area.type)" /></el-icon>
+                <span>{{ area.name }}配置</span>
               </div>
             </div>
           </div>
@@ -127,7 +119,7 @@
         <div class="panel-title">属性配置</div>
 
         <!-- 页面属性 -->
-        <el-form v-if="selectedArea === 'page'" label-width="80px" size="small">
+        <el-form v-if="isPageSelected" label-width="80px" size="small">
           <div class="form-section">页面属性</div>
           <el-form-item label="页面名称">
             <el-input v-model="pageConfig.pageName" placeholder="请输入页面名称" />
@@ -147,63 +139,104 @@
           </el-form-item>
         </el-form>
 
-        <!-- 查询字段属性 -->
-        <el-form v-else-if="selectedArea === 'search' && selectedField" label-width="80px" size="small">
-          <div class="form-section">查询字段属性</div>
-          <el-form-item label="字段标签">
-            <el-input v-model="selectedField.label" />
-          </el-form-item>
-          <el-form-item label="字段编码">
-            <el-input v-model="selectedField.fieldCode" />
-          </el-form-item>
-          <el-form-item label="字段类型">
-            <el-select v-model="selectedField.type">
-              <el-option label="输入框" value="input" />
-              <el-option label="下拉框" value="select" />
-              <el-option label="日期" value="date" />
-              <el-option label="日期范围" value="dateRange" />
-              <el-option label="数字" value="number" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="占位符">
-            <el-input v-model="selectedField.placeholder" />
-          </el-form-item>
-          <el-form-item label="必填">
-            <el-switch v-model="selectedField.required" />
-          </el-form-item>
-        </el-form>
+        <!-- 区域配置 -->
+        <div v-else-if="selectedArea" class="area-config-container">
+          <div class="form-section">{{ selectedArea.name }}配置</div>
 
-        <!-- 内容区属性 -->
-        <el-form v-else-if="selectedArea === 'content'" label-width="80px" size="small">
-          <div class="form-section">内容区域属性</div>
-          <el-form-item label="标题">
-            <el-input v-model="pageConfig.configJsonObject!.contentArea.title" />
-          </el-form-item>
-          <el-form-item label="显示工具栏">
-            <el-switch v-model="pageConfig.configJsonObject!.contentArea.showToolbar" />
-          </el-form-item>
-        </el-form>
+          <!-- 查询区配置 -->
+          <SearchAreaConfig
+            v-if="selectedArea.type === 'search'"
+            :key="`search-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+
+          <!-- 内容区配置 -->
+          <ContentAreaConfig
+            v-else-if="selectedArea.type === 'content'"
+            :key="`content-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+
+          <!-- 树形区配置 -->
+          <TreeAreaConfig
+            v-else-if="selectedArea.type === 'tree'"
+            :key="`tree-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+
+          <!-- 工具栏配置 -->
+          <ToolbarAreaConfig
+            v-else-if="selectedArea.type === 'toolbar'"
+            :key="`toolbar-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+
+          <!-- 标签页配置 -->
+          <TabsAreaConfig
+            v-else-if="selectedArea.type === 'tabs'"
+            :key="`tabs-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+
+          <!-- 自定义区配置 -->
+          <CustomAreaConfig
+            v-else
+            :key="`custom-${selectedArea.id}`"
+            :area="selectedArea"
+            @update="updateArea"
+          />
+        </div>
 
         <div v-else class="empty-hint">请在中间区域选择要配置的组件</div>
       </div>
     </div>
 
-    <!-- 组件选择弹窗 -->
-    <ComponentSelector
-      v-model="selectorVisible"
-      :type="selectorType"
-      @select="handleComponentSelect"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import type { PageConfig, SearchField } from '@/api/page'
-import { getPage, createPage, updatePage } from '@/api/page'
-import ComponentSelector from '@/components/designer/ComponentSelector.vue'
+import {
+  Edit,
+  List,
+  Calendar,
+  Timer,
+  Histogram,
+  Grid,
+  Document,
+  ArrowLeft,
+  View,
+  Check,
+  CircleClose,
+  Rank,
+  Files
+} from '@element-plus/icons-vue'
+import type { PageConfig, SearchField, NormalizedArea, AreaInfo } from '@/api/page'
+import { getPage, createPage, updatePage, getPageTemplate, getPageTemplateAreas } from '@/api/page'
+import {
+  detectVersion,
+  v1ToV2,
+  v2ToV1,
+  mergeTemplateAndPageAreas,
+  validateConfig,
+  type V2Config
+} from '@/utils/configConverter'
+import ComponentLibraryPanel from '@/components/designer/ComponentLibraryPanel.vue'
+import {
+  SearchAreaConfig,
+  ContentAreaConfig,
+  TreeAreaConfig,
+  ToolbarAreaConfig,
+  TabsAreaConfig,
+  CustomAreaConfig
+} from '@/components/designer/area-config'
 
 const router = useRouter()
 const route = useRoute()
@@ -212,15 +245,19 @@ const route = useRoute()
 const pageId = ref<number | null>(null)
 const isEdit = computed(() => !!pageId.value)
 
-// 选中的区域：page, search, content
-const selectedArea = ref<'page' | 'search' | 'content'>('page')
-const selectedFieldId = ref<string>('')
+// 模板相关
+const templateId = ref<number | null>(null)
+const currentTemplate = ref<any>(null)
+const templateAreas = ref<AreaInfo[]>([])
+const pageAreas = ref<Record<string, NormalizedArea>>({})
+
+// 选中的区域
+const selectedAreaId = ref<string | null>(null)
+const selectedAreaIdValue = computed(() => selectedAreaId.value)
 
 // 组件选择弹窗
-const selectorVisible = ref(false)
-const selectorType = ref<'table' | 'form'>('table')
 
-// 默认配置对象
+// 默认配置对象（v1格式，向后兼容）
 const defaultConfigJson = {
   searchArea: {
     enabled: true,
@@ -246,80 +283,149 @@ const pageConfig = reactive<PageConfig>({
   pageCode: '',
   pageType: 'list',
   status: true,
+  templateId: undefined,
+  layoutType: undefined,
   configJsonObject: { ...defaultConfigJson },
   layoutConfigObject: { ...defaultLayoutConfig }
 })
 
-// 选中的查询字段
-const selectedField = computed<SearchField | null>(() => {
-  return pageConfig.configJsonObject!.searchArea.fields.find(f => f.id === selectedFieldId.value) || null
+// 获取区域图标
+const getAreaIcon = (areaType: string) => {
+  const iconMap: Record<string, any> = {
+    search: Edit,
+    content: Document,
+    tree: List,
+    toolbar: Grid,
+    tabs: Files,
+    stats: Histogram,
+    charts: Histogram,
+    header: View,
+    custom: Edit
+  }
+  return iconMap[areaType] || Grid
+}
+
+// 计算属性：当前选中的区域
+const selectedArea = computed(() => {
+  if (!selectedAreaIdValue.value) return null
+  return pageAreas.value[selectedAreaIdValue.value] || null
 })
+
+// 计算属性：是否选中页面属性
+const isPageSelected = computed(() => selectedAreaIdValue.value === null)
+
+// 更新区域配置
+const updateArea = (area: NormalizedArea) => {
+  pageAreas.value[area.id] = area
+}
+
+// 打开查询字段编辑器
+const openSearchFieldEditor = () => {
+  if (selectedArea.value?.type === 'search') {
+    // 添加一个新字段
+    const newField = {
+      id: generateId(),
+      label: '新字段',
+      fieldCode: '',
+      type: 'input',
+      placeholder: '',
+      required: false
+    }
+    if (!selectedArea.value.config) {
+      selectedArea.value.config = { title: '查询条件', collapsible: true, fields: [] }
+    }
+    if (!selectedArea.value.config.fields) {
+      selectedArea.value.config.fields = []
+    }
+    selectedArea.value.config.fields.push(newField)
+    updateArea(selectedArea.value)
+  }
+}
 
 // 生成唯一ID
 const generateId = () => `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-// 添加查询字段
-const addSearchField = (type: 'input' | 'select' | 'date' | 'dateRange' | 'number') => {
-  const newField: SearchField = {
-    id: generateId(),
-    label: type === 'input' ? '输入框' : type === 'select' ? '下拉框' : type === 'date' ? '日期' : type === 'dateRange' ? '日期范围' : '数字',
-    fieldCode: `field_${type}`,
-    type,
-    placeholder: `请${type === 'select' ? '选择' : '输入'}`,
-    required: false
-  }
-  pageConfig.configJsonObject!.searchArea.fields.push(newField)
-  selectedFieldId.value = newField.id
-  selectedArea.value = 'search'
-}
-
-// 删除查询字段
-const removeSearchField = (index: number) => {
-  const fieldId = pageConfig.configJsonObject!.searchArea.fields[index].id
-  pageConfig.configJsonObject!.searchArea.fields.splice(index, 1)
-  if (selectedFieldId.value === fieldId) {
-    selectedFieldId.value = ''
-    selectedArea.value = 'page'
-  }
-}
-
-// 选择字段
-const selectField = (fieldId: string, area: 'search' | 'content') => {
-  selectedFieldId.value = fieldId
-  selectedArea.value = area
-}
-
 // 选择区域
-const selectArea = (area: 'page' | 'search' | 'content') => {
-  selectedArea.value = area
-  if (area === 'search' && pageConfig.configJsonObject!.searchArea.fields.length > 0) {
-    selectedFieldId.value = pageConfig.configJsonObject!.searchArea.fields[0].id
-  } else if (area === 'content') {
-    selectedFieldId.value = ''
-  } else {
-    selectedFieldId.value = ''
+const selectArea = (areaId: string | null) => {
+  selectedAreaId.value = areaId
+}
+
+// 组件库类型切换
+const activeLibrary = ref<'common' | 'business'>('common')
+
+// 处理从组件库选择组件
+const handleComponentSelect = (type: string, component: any) => {
+  if (!selectedArea.value) {
+    ElMessage.warning('请先选择一个区域')
+    return
+  }
+
+  if (type === 'button') {
+    // 添加按钮到当前区域 - 创建新的对象引用以确保响应式更新
+    const currentButtons = selectedArea.value.config?.buttons || []
+    const updatedArea = {
+      ...selectedArea.value,
+      config: {
+        ...selectedArea.value.config,
+        buttons: [
+          ...currentButtons,
+          {
+            id: `btn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            buttonId: component.id,  // 引用按钮ID
+            label: component.buttonName,
+            buttonCode: component.buttonCode
+          }
+        ]
+      }
+    }
+    updateArea(updatedArea)
+    ElMessage.success(`已添加按钮：${component.buttonName}`)
+  } else if (type === 'form') {
+    const updatedArea = {
+      ...selectedArea.value,
+      config: {
+        componentType: 'form',
+        configId: component.id,
+        title: component.formName,
+        formCode: component.formCode
+      }
+    }
+    updateArea(updatedArea)
+    ElMessage.success(`已添加表单：${component.formName}`)
+  } else if (type === 'table') {
+    const updatedArea = {
+      ...selectedArea.value,
+      config: {
+        componentType: 'table',
+        configId: component.id,
+        title: component.tableName,
+        tableCode: component.tableCode
+      }
+    }
+    updateArea(updatedArea)
+    ElMessage.success(`已添加表格：${component.tableName}`)
   }
 }
 
-// 打开组件选择弹窗
-const openComponentSelector = (type?: 'table' | 'form') => {
-  if (type) {
-    selectorType.value = type
+// 处理拖拽开始
+const handleDragStart = (event: DragEvent, component: any, type?: string) => {
+  if (!selectedArea.value) {
+    ElMessage.warning('请先选择一个区域')
+    event.preventDefault()
+    return
   }
-  selectorVisible.value = true
+
+  // 设置拖拽数据
+  const dragData = {
+    componentType: type || (component.buttonCode ? 'button' : ''),
+    componentId: component.id,
+    componentName: component.buttonName || component.formName || component.tableName,
+    data: component
+  }
+  event.dataTransfer?.setData('application/json', JSON.stringify(dragData))
 }
 
-// 处理组件选择
-const handleComponentSelect = (config: { id: number; name: string; type: 'table' | 'form' }) => {
-  pageConfig.configJsonObject!.contentArea = {
-    type: config.type,
-    configId: config.id,
-    title: config.name,
-    showToolbar: true
-  }
-  selectedArea.value = 'content'
-  ElMessage.success(`已选择${config.type === 'table' ? '表格' : '表单'}: ${config.name}`)
-}
+
 
 // 返回
 const handleBack = () => {
@@ -344,11 +450,37 @@ const handleSave = async () => {
   }
 
   try {
+    // 构建 v2 配置
+    const v2Config: V2Config = {
+      version: 2,
+      templateCode: currentTemplate.value?.templateCode,
+      layoutType: currentTemplate.value?.layoutType,
+      areas: Object.values(pageAreas.value).filter(a => a.enabled !== false)
+    }
+
+    // 验证配置
+    const validation = validateConfig(v2Config, templateAreas.value)
+    if (!validation.valid) {
+      validation.errors.forEach(err => ElMessage.error(err))
+      return
+    }
+
+    // 生成 v1 配置（向后兼容）
+    const v1Config = v2ToV1(v2Config)
+
+    // 提交数据
+    const submitData = {
+      ...pageConfig,
+      configTemplate: JSON.stringify(v2Config),
+      configJsonObject: v1Config,
+      configJson: JSON.stringify(v1Config)
+    }
+
     if (isEdit.value && pageId.value) {
-      await updatePage(pageId.value, pageConfig)
+      await updatePage(pageId.value, submitData)
       ElMessage.success('更新成功')
     } else {
-      const id = await createPage(pageConfig)
+      const id = await createPage(submitData)
       pageId.value = id
       ElMessage.success('创建成功')
     }
@@ -368,17 +500,90 @@ const loadPageConfig = async (id: number) => {
     pageConfig.pageCode = data.pageCode || ''
     pageConfig.pageType = data.pageType || 'list'
     pageConfig.status = data.status ?? true
+    templateId.value = data.templateId || null
 
-    // 解析 configJson
+    // 如果有模板ID，加载模板区域定义
+    if (templateId.value) {
+      try {
+        currentTemplate.value = await getPageTemplate(templateId.value)
+        templateAreas.value = await getPageTemplateAreas(templateId.value)
+      } catch (error) {
+        console.error('加载模板区域失败:', error)
+        // 使用默认区域
+        templateAreas.value = [
+          { id: 'search', type: 'search', name: '查询区', required: false },
+          { id: 'content', type: 'content', name: '内容区', required: true }
+        ]
+      }
+    } else {
+      // 无模板时使用默认区域
+      templateAreas.value = [
+        { id: 'search', type: 'search', name: '查询区', required: false },
+        { id: 'content', type: 'content', name: '内容区', required: true }
+      ]
+    }
+
+    // 解析配置
+    let config: any
+    if (data.configTemplate) {
+      try {
+        config = JSON.parse(data.configTemplate)  // v2 格式
+      } catch (e) {
+        console.error('解析 configTemplate 失败:', e)
+        config = null
+      }
+    }
+
     if (data.configJsonObject) {
-      pageConfig.configJsonObject = data.configJsonObject
+      config = data.configJsonObject  // v1 格式（对象）
     } else if (data.configJson) {
       try {
-        pageConfig.configJsonObject = JSON.parse(data.configJson)
+        config = JSON.parse(data.configJson)  // v1 格式（字符串）
       } catch (e) {
         console.error('解析 configJson 失败:', e)
-        pageConfig.configJsonObject = { ...defaultConfigJson }
+        config = null
       }
+    }
+
+    // 根据版本处理
+    if (config) {
+      const version = detectVersion(config)
+      if (version === 2 && config.areas) {
+        // v2 格式：直接使用 areas 数组
+        const areasObj: Record<string, NormalizedArea> = {}
+        for (const area of config.areas) {
+          areasObj[area.id] = area
+        }
+        // 合并模板区域和页面配置
+        pageAreas.value = mergeTemplateAndPageAreas(templateAreas.value, areasObj)
+      } else {
+        // v1 格式：转换为 v2
+        const v2Config = v1ToV2(config, templateAreas.value)
+        const areasObj: Record<string, NormalizedArea> = {}
+        for (const area of v2Config.areas) {
+          areasObj[area.id] = area
+        }
+        pageAreas.value = mergeTemplateAndPageAreas(templateAreas.value, areasObj)
+      }
+    } else {
+      // 无配置时使用模板默认值
+      const areasObj: Record<string, NormalizedArea> = {}
+      for (const templateArea of templateAreas.value) {
+        areasObj[templateArea.id] = {
+          id: templateArea.id,
+          type: templateArea.type,
+          name: templateArea.name,
+          enabled: templateArea.required ?? true,
+          required: templateArea.required ?? false,
+          config: {}
+        }
+      }
+      pageAreas.value = areasObj
+    }
+
+    // 保存 v1 配置用于向后兼容显示
+    if (data.configJsonObject) {
+      pageConfig.configJsonObject = data.configJsonObject
     } else {
       pageConfig.configJsonObject = { ...defaultConfigJson }
     }
@@ -402,11 +607,44 @@ const loadPageConfig = async (id: number) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const id = route.query.id as string
   if (id) {
     pageId.value = parseInt(id)
-    loadPageConfig(parseInt(id))
+    await loadPageConfig(parseInt(id))
+  } else {
+    // 新建页面：使用默认区域
+    templateAreas.value = [
+      { id: 'search', type: 'search', name: '查询区', required: false },
+      { id: 'content', type: 'content', name: '内容区', required: true }
+    ]
+    pageAreas.value = {
+      search: {
+        id: 'search',
+        type: 'search',
+        name: '查询区',
+        enabled: true,
+        required: false,
+        config: {
+          title: '查询条件',
+          collapsible: true,
+          fields: []
+        }
+      },
+      content: {
+        id: 'content',
+        type: 'content',
+        name: '内容区',
+        enabled: true,
+        required: true,
+        config: {
+          title: '数据列表',
+          componentType: 'table',
+          configId: null,
+          showToolbar: true
+        }
+      }
+    }
   }
 })
 </script>
@@ -473,6 +711,26 @@ onMounted(() => {
   background-color: #fafafa;
 }
 
+.library-tabs {
+  padding: 8px 12px 0;
+  border-bottom: 1px solid #e4e7ed;
+
+  :deep(.el-tabs__header) {
+    margin: 0;
+  }
+
+  :deep(.el-tabs__nav) {
+    border: none;
+  }
+
+  :deep(.el-tabs__item) {
+    font-size: 12px;
+    padding: 0 12px;
+    height: 28px;
+    line-height: 28px;
+  }
+}
+
 .component-section {
   padding: 12px 16px;
 
@@ -517,6 +775,23 @@ onMounted(() => {
   }
 }
 
+.component-tip {
+  margin-top: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #909399;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.empty-hint-panel {
+  padding: 30px 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
+}
+
 .center-panel {
   flex: 1;
   padding: 20px;
@@ -531,9 +806,25 @@ onMounted(() => {
   min-height: 500px;
 }
 
-.search-area-preview,
-.content-area-preview {
+.area-preview {
   margin-bottom: 20px;
+  border: 2px solid #e4e7ed;
+  border-radius: 4px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #409eff;
+  }
+
+  &.selected {
+    border-color: #409eff;
+    background-color: #ecf5ff;
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    border-color: #dcdfe6;
+  }
 
   .area-header {
     display: flex;
@@ -541,18 +832,35 @@ onMounted(() => {
     gap: 8px;
     padding: 8px 12px;
     background-color: #f5f7fa;
-    border-radius: 4px;
-    margin-bottom: 8px;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid #e4e7ed;
     font-size: 13px;
     color: #606266;
+
+    .area-name {
+      flex: 1;
+      font-weight: 500;
+    }
   }
 
   .area-content {
     padding: 16px;
     background-color: #fafafa;
-    border: 2px dashed #dcdfe6;
-    border-radius: 4px;
     min-height: 60px;
+  }
+}
+
+.generic-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #909399;
+  font-size: 13px;
+
+  .el-icon {
+    font-size: 24px;
   }
 }
 
@@ -560,6 +868,10 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.area-config-container {
+  padding: 0;
 }
 
 .field-item {
@@ -570,28 +882,10 @@ onMounted(() => {
   background-color: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #409eff;
-  }
-
-  &.active {
-    border-color: #409eff;
-    background-color: #ecf5ff;
-  }
+  font-size: 12px;
 
   .field-label {
-    font-size: 12px;
-  }
-
-  .delete-icon {
-    color: #f56c6c;
-    cursor: pointer;
-    &:hover {
-      color: #ff0000;
-    }
+    font-weight: 500;
   }
 }
 
@@ -601,19 +895,8 @@ onMounted(() => {
   gap: 16px;
   padding: 16px;
   background-color: #fff;
-  border: 2px dashed #e4e7ed;
+  border: 2px solid #e4e7ed;
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #409eff;
-  }
-
-  &.active {
-    border-color: #409eff;
-    background-color: #ecf5ff;
-  }
 
   .el-icon {
     font-size: 32px;
@@ -638,7 +921,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  min-height: 60px;
   color: #909399;
   font-size: 12px;
   cursor: pointer;

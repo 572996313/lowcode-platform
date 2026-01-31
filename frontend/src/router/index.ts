@@ -29,16 +29,22 @@ const staticRoutes: RouteRecordRaw[] = [
         meta: { title: '页面设计器' }
       },
       {
-        path: 'lowcode/form/designer',
+        path: 'lowcode/FormDesigner',
         name: 'FormDesigner',
         component: () => import('@/views/lowcode/FormDesigner.vue'),
         meta: { title: '表单设计器' }
       },
       {
-        path: 'lowcode/table/designer',
+        path: 'lowcode/TableDesigner',
         name: 'TableDesigner',
         component: () => import('@/views/lowcode/TableDesigner.vue'),
         meta: { title: '表格设计器' }
+      },
+      {
+        path: 'lowcode/ButtonLibrary',
+        name: 'ButtonLibrary',
+        component: () => import('@/views/lowcode/ButtonLibrary.vue'),
+        meta: { title: '按钮管理' }
       },
       {
         path: 'page/preview',

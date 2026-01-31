@@ -42,4 +42,14 @@ public interface ILowTableConfigService extends IService<LowTableConfig> {
      * 保存表格列配置
      */
     void saveTableColumns(Long tableId, List<LowTableColumn> columns);
+
+    /**
+     * 根据组件分类获取表格列表
+     */
+    List<LowTableConfig> getByCategory(String category);
+
+    /**
+     * 统计指定分类的表格数量
+     */
+    Long countByCategory(String category);
 }

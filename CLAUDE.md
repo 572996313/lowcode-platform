@@ -101,7 +101,8 @@ mvn test             # 运行测试
 - `handler/` - MyBatis TypeHandler（如 DefaultValueTypeHandler 处理 JSON 字段）
 
 **数据库配置：**
-- 默认数据源：`mysql://localhost:3306/lowcode_platform`（用户名 root / 密码 1234）
+- 默认数据源：`mysql://localhost:3306/lowcode_platform`（用户名 root / 密码 123456）
+- MySQL 可能在 Docker 容器中，也可能是本地安装的 MySQL
 - 逻辑删除字段：`deleted`（1=删除，0=存在）
 - 主键策略：`AUTO`（数据库自增）
 - 字段自动填充：`createTime`（插入时）、`updateTime`（插入和更新时）
@@ -115,6 +116,84 @@ mvn test             # 运行测试
 **数据库初始化：**
 - 初始化脚本：`docs/init.sql`
 - 迁移脚本：`docs/migration/` 目录（如 `002_add_page_publish.sql`）
+
+### 字符集和乱码问题
+
+**重要：** 执行 SQL 脚本时必须使用正确的字符集参数，否则会导致乱码。
+
+**问题类型：**
+
+1. **表结构注释乱码**（`??`）
+   - **原因**: 创建表时没有指定 `--default-character-set=utf8mb4` 参数
+   - **影响**: 表的 COMMENT 显示为 `??`，但数据本身可能正常
+
+2. **数据内容乱码**（如 `ä¿­`）
+   - **原因**: 命令行在执行 SQL 时进行了错误的字符集转换
+   - **影响**: 插入的中文数据显示为乱码
+
+**正确的 SQL 执行方式：**
+
+#### 场景 1：MySQL 在 Docker 中
+```bash
+# 查找 MySQL 容器
+docker ps | grep mysql
+
+# ✅ 正确方式 - 使用文件导入，避免命令行字符集转换
+docker exec -i <容器名或ID> mysql -uroot -p<密码> --default-character-set=utf8mb4 lowcode_platform < script.sql
+
+# 示例（容器名为 wizardly_yalow）
+docker exec -i wizardly_yalow mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+
+# 或者在 SQL 文件开头设置字符集
+docker exec -i wizardly_yalow mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+```
+
+#### 场景 2：本地 MySQL
+```bash
+# ✅ 正确方式 - 指定字符集参数
+mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+
+# 或在 MySQL 命令行中设置
+mysql -uroot -p123456 lowcode_platform
+mysql> SET NAMES utf8mb4;
+mysql> SOURCE script.sql;
+```
+
+**通用 SQL 文件模板：**
+
+在 SQL 脚本开头添加字符集设置：
+```sql
+-- 设置字符集（防止乱码）
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+SET character_set_client = utf8mb4;
+SET character_set_connection = utf8mb4;
+SET character_set_results = utf8mb4;
+
+-- 你的 SQL 语句...
+```
+
+**字符集验证：**
+
+```bash
+# Docker 环境
+docker exec <容器名> mysql -uroot -p<密码> -e "SHOW VARIABLES LIKE 'character_set%';"
+
+# 本地 MySQL
+mysql -uroot -p<密码> -e "SHOW VARIABLES LIKE 'character_set%';"
+
+# 查看表结构（注释应正常显示中文）
+docker exec <容器名> mysql -uroot -p<密码> --default-character-set=utf8mb4 -e "USE lowcode_platform; SHOW CREATE TABLE low_button_config\G"
+```
+
+**修复乱码的步骤：**
+
+1. 备份现有数据到临时表
+2. 使用正确的字符集重建表结构
+3. 从备份表恢复数据（确保使用 `--default-character-set=utf8mb4`）
+4. 验证数据是否正常显示
+
+参考脚本：`docs/migration/008_fix_button_charset.sql`
 
 ## 配置文件
 
@@ -185,8 +264,12 @@ mvn test             # 运行测试
 ### 调试和诊断
 1. **API 文档**：后端启动后访问 http://localhost:8765/doc.html 查看 Knife4j 文档
 2. **Druid 监控**：访问 http://localhost:8765/druid/（用户 admin / admin123）查看 SQL 监控和数据库连接池状态
-3. **日志配置**：
+3. **数据库连接诊断**：
+   - 检查 MySQL 是否运行：`docker ps | grep mysql` 或 `systemctl status mysql`
+   - 测试连接：`mysql -h localhost -P 3306 -u root -p`
+   - 查看字符集：确保所有字符集变量为 `utf8mb4`
+4. **日志配置**：
    - 后端日志文件：`logs/lowcode-platform.log`
    - 日志级别：com.lowcode 包为 DEBUG，com.lowcode.mapper 为 DEBUG
    - 控制台输出：使用 ANSI 彩色日志
-4. **Vue DevTools**：浏览器安装 Vue DevTools 扩展进行前端调试
+5. **Vue DevTools**：浏览器安装 Vue DevTools 扩展进行前端调试

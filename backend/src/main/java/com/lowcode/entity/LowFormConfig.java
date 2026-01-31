@@ -36,9 +36,14 @@ public class LowFormConfig implements Serializable {
     private String formCode;
 
     /**
-     * 所属页面ID
+     * 组件分类(common=通用组件库, business=业务组件库)
      */
-    private Long pageId;
+    private String componentCategory;
+
+    /**
+     * 组件标签JSON: ["system","user"]
+     */
+    private String componentTags;
 
     /**
      * 表单类型(add/edit/search/detail/dialog)

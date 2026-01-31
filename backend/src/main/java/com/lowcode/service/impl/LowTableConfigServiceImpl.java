@@ -162,4 +162,21 @@ public class LowTableConfigServiceImpl extends ServiceImpl<LowTableConfigMapper,
             tableColumnMapper.insert(column);
         }
     }
+
+    @Override
+    public List<LowTableConfig> getByCategory(String category) {
+        return list(
+                Wrappers.lambdaQuery(LowTableConfig.class)
+                        .eq(LowTableConfig::getComponentCategory, category)
+                        .eq(LowTableConfig::getStatus, true)
+                        .orderByDesc(LowTableConfig::getUpdateTime)
+        );
+    }
+
+    @Override
+    public Long countByCategory(String category) {
+        return lambdaQuery()
+                .eq(LowTableConfig::getComponentCategory, category)
+                .count();
+    }
 }

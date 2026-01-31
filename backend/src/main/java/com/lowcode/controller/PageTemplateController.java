@@ -5,6 +5,7 @@ import com.lowcode.entity.LowPageConfig;
 import com.lowcode.entity.LowPageTemplate;
 import com.lowcode.service.ILowPageConfigService;
 import com.lowcode.service.IPageTemplateService;
+import com.lowcode.util.PageTemplateUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,20 @@ public class PageTemplateController {
     public Result<LowPageTemplate> getTemplate(@PathVariable Long id) {
         LowPageTemplate result = pageTemplateService.getById(id);
         return Result.success(result);
+    }
+
+    @GetMapping("/{id}/areas")
+    @Operation(summary = "获取模板的区域配置信息")
+    public Result<List<PageTemplateUtils.AreaInfo>> getTemplateAreas(@PathVariable Long id) {
+        LowPageTemplate template = pageTemplateService.getById(id);
+        if (template == null) {
+            return Result.fail("模板不存在");
+        }
+
+        List<PageTemplateUtils.AreaInfo> areas = PageTemplateUtils.parseAreas(template.getConfigTemplate());
+        log.info("获取模板区域信息, templateId: {}, areaCount: {}", id, areas.size());
+
+        return Result.success(areas);
     }
 
     @PostMapping("/from-template")

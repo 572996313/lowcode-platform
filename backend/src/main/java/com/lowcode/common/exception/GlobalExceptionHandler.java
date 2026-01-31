@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.stream.Collectors;
 
@@ -24,6 +25,19 @@ public class GlobalExceptionHandler {
     public Result<Void> handleBusinessException(BusinessException e) {
         log.error("业务异常: {}", e.getMessage());
         return Result.fail(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * 处理参数类型转换异常
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Result<Void> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        String paramName = e.getName();
+        String paramValue = e.getValue() != null ? e.getValue().toString() : "null";
+        String requiredType = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "未知";
+        String message = String.format("参数 '%s' 的值 '%s' 无法转换为 %s 类型", paramName, paramValue, requiredType);
+        log.error("参数类型转换失败: {}", message);
+        return Result.fail(400, message);
     }
 
     /**

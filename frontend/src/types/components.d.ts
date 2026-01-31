@@ -7,10 +7,14 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
-    ButtonRenderer: typeof import('./../components/ButtonRenderer.vue')['default']
+    ButtonRenderer: typeof import('./../components/render/ButtonRenderer.vue')['default']
+    ComponentLibraryPanel: typeof import('./../components/designer/ComponentLibraryPanel.vue')['default']
     ComponentSelector: typeof import('./../components/designer/ComponentSelector.vue')['default']
+    ContentAreaConfig: typeof import('./../components/designer/area-config/ContentAreaConfig.vue')['default']
+    CustomAreaConfig: typeof import('./../components/designer/area-config/CustomAreaConfig.vue')['default']
     CustomLayout: typeof import('./../components/layout/CustomLayout.vue')['default']
     DashboardLayout: typeof import('./../components/layout/DashboardLayout.vue')['default']
+    ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElBreadcrumb: typeof import('element-plus/es')['ElBreadcrumb']
     ElBreadcrumbItem: typeof import('element-plus/es')['ElBreadcrumbItem']
@@ -63,12 +67,16 @@ declare module 'vue' {
     FormRender: typeof import('./../components/render/FormRender.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchAreaConfig: typeof import('./../components/designer/area-config/SearchAreaConfig.vue')['default']
     SearchAreaRender: typeof import('./../components/render/SearchAreaRender.vue')['default']
     SearchFieldRender: typeof import('./../components/render/SearchFieldRender.vue')['default']
     TableColumnRender: typeof import('./../components/render/TableColumnRender.vue')['default']
     TableRender: typeof import('./../components/render/TableRender.vue')['default']
+    TabsAreaConfig: typeof import('./../components/designer/area-config/TabsAreaConfig.vue')['default']
     TabsLayout: typeof import('./../components/layout/TabsLayout.vue')['default']
+    ToolbarAreaConfig: typeof import('./../components/designer/area-config/ToolbarAreaConfig.vue')['default']
     TopBottomLayout: typeof import('./../components/layout/TopBottomLayout.vue')['default']
+    TreeAreaConfig: typeof import('./../components/designer/area-config/TreeAreaConfig.vue')['default']
     TreeTableLayout: typeof import('./../components/layout/TreeTableLayout.vue')['default']
   }
   export interface ComponentCustomProperties {

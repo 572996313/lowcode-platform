@@ -16,8 +16,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 按钮配置服务实现
@@ -33,15 +35,15 @@ public class LowButtonConfigServiceImpl extends ServiceImpl<LowButtonConfigMappe
         Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
         String buttonName = params.get("buttonName") != null ? params.get("buttonName").toString() : null;
         String buttonCode = params.get("buttonCode") != null ? params.get("buttonCode").toString() : null;
-        Long pageId = params.get("pageId") != null ? Long.parseLong(params.get("pageId").toString()) : null;
         String position = params.get("position") != null ? params.get("position").toString() : null;
+        String componentCategory = params.get("componentCategory") != null ? params.get("componentCategory").toString() : null;
 
         Page<LowButtonConfig> page = new Page<>(current, size);
 
         LambdaQueryWrapper<LowButtonConfig> wrapper = Wrappers.lambdaQuery();
         wrapper.like(StrUtil.isNotBlank(buttonName), LowButtonConfig::getButtonName, buttonName)
                 .like(StrUtil.isNotBlank(buttonCode), LowButtonConfig::getButtonCode, buttonCode)
-                .eq(pageId != null, LowButtonConfig::getPageId, pageId)
+                .eq(StrUtil.isNotBlank(componentCategory), LowButtonConfig::getComponentCategory, componentCategory)
                 .eq(StrUtil.isNotBlank(position), LowButtonConfig::getPosition, position)
                 .orderByAsc(LowButtonConfig::getSortOrder)
                 .orderByDesc(LowButtonConfig::getUpdateTime);
@@ -53,31 +55,20 @@ public class LowButtonConfigServiceImpl extends ServiceImpl<LowButtonConfigMappe
 
     @Override
     public List<LowButtonConfig> getButtonsByPageId(Long pageId) {
-        return list(
-                Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getPageId, pageId)
-                        .orderByAsc(LowButtonConfig::getSortOrder)
-        );
+        log.warn("使用了废弃的接口: getButtonsByPageId，建议使用组件库接口");
+        return List.of();
     }
 
     @Override
     public List<LowButtonConfig> getButtonsByFormId(Long formId) {
-        return list(
-                Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getFormId, formId)
-                        .in(LowButtonConfig::getPosition, "form", "footer", "dialog")
-                        .orderByAsc(LowButtonConfig::getSortOrder)
-        );
+        log.warn("使用了废弃的接口: getButtonsByFormId，建议使用组件库接口");
+        return List.of();
     }
 
     @Override
     public List<LowButtonConfig> getButtonsByTableId(Long tableId) {
-        return list(
-                Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getTableId, tableId)
-                        .in(LowButtonConfig::getPosition, "toolbar", "row")
-                        .orderByAsc(LowButtonConfig::getSortOrder)
-        );
+        log.warn("使用了废弃的接口: getButtonsByTableId，建议使用组件库接口");
+        return List.of();
     }
 
     @Override
@@ -168,75 +159,68 @@ public class LowButtonConfigServiceImpl extends ServiceImpl<LowButtonConfigMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchSaveButtons(Long pageId, List<LowButtonConfig> buttons) {
-        // 删除原有按钮
-        remove(
-                Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getPageId, pageId)
-        );
-
-        // 保存新按钮
-        if (CollUtil.isNotEmpty(buttons)) {
-            for (int i = 0; i < buttons.size(); i++) {
-                LowButtonConfig button = buttons.get(i);
-                button.setPageId(pageId);
-                button.setSortOrder(i);
-                if (button.getId() != null) {
-                    button.setId(null); // 清除ID，重新插入
-                }
-                save(button);
-            }
-        }
-
-        log.info("批量保存按钮配置成功, pageId: {}, count: {}", pageId, buttons.size());
+        log.warn("使用了废弃的接口: batchSaveButtons，建议使用组件库接口");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchSaveButtonsByFormId(Long formId, List<LowButtonConfig> buttons) {
-        // 删除原有按钮
-        remove(
-                Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getFormId, formId)
-        );
-
-        // 保存新按钮
-        if (CollUtil.isNotEmpty(buttons)) {
-            for (int i = 0; i < buttons.size(); i++) {
-                LowButtonConfig button = buttons.get(i);
-                button.setFormId(formId);
-                button.setSortOrder(i);
-                if (button.getId() != null) {
-                    button.setId(null); // 清除ID，重新插入
-                }
-                save(button);
-            }
-        }
-
-        log.info("按表单ID批量保存按钮配置成功, formId: {}, count: {}", formId, buttons.size());
+        log.warn("使用了废弃的接口: batchSaveButtonsByFormId，建议使用组件库接口");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchSaveButtonsByTableId(Long tableId, List<LowButtonConfig> buttons) {
-        // 删除原有按钮
-        remove(
+        log.warn("使用了废弃的接口: batchSaveButtonsByTableId，建议使用组件库接口");
+    }
+
+    @Override
+    public List<LowButtonConfig> getByCategory(String category) {
+        return list(
                 Wrappers.lambdaQuery(LowButtonConfig.class)
-                        .eq(LowButtonConfig::getTableId, tableId)
+                        .eq(LowButtonConfig::getComponentCategory, category)
+                        .eq(LowButtonConfig::getStatus, true)
+                        .orderByAsc(LowButtonConfig::getSortOrder)
         );
+    }
 
-        // 保存新按钮
-        if (CollUtil.isNotEmpty(buttons)) {
-            for (int i = 0; i < buttons.size(); i++) {
-                LowButtonConfig button = buttons.get(i);
-                button.setTableId(tableId);
-                button.setSortOrder(i);
-                if (button.getId() != null) {
-                    button.setId(null); // 清除ID，重新插入
-                }
-                save(button);
-            }
+    @Override
+    public List<LowButtonConfig> getByCategoryAndTags(String category, String tags) {
+        // tags: "crud,export"
+        List<String> tagList = Arrays.asList(tags.split(","));
+
+        return list(
+                Wrappers.lambdaQuery(LowButtonConfig.class)
+                        .eq(LowButtonConfig::getComponentCategory, category)
+                        .eq(LowButtonConfig::getStatus, true)
+                        .orderByAsc(LowButtonConfig::getSortOrder)
+        ).stream()
+                .filter(btn -> {
+                    if (btn.getComponentTags() == null) return false;
+                    // 解析JSON标签
+                    String tagsJson = btn.getComponentTags()
+                            .replace("[", "")
+                            .replace("]", "")
+                            .replace("\"", "")
+                            .replace(" ", "");
+                    List<String> btnTags = Arrays.asList(tagsJson.split(","));
+                    return btnTags.stream().anyMatch(tagList::contains);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Long countByCategory(String category) {
+        return lambdaQuery()
+                .eq(LowButtonConfig::getComponentCategory, category)
+                .count();
+    }
+
+    @Override
+    public List<LowButtonConfig> getButtonsByIds(List<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return List.of();
         }
-
-        log.info("按表格ID批量保存按钮配置成功, tableId: {}, count: {}", tableId, buttons.size());
+        return listByIds(ids);
     }
 }

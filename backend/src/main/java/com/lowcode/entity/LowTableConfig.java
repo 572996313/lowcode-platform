@@ -36,9 +36,14 @@ public class LowTableConfig implements Serializable {
     private String tableCode;
 
     /**
-     * 所属页面ID
+     * 组件分类(common=通用组件库, business=业务组件库)
      */
-    private Long pageId;
+    private String componentCategory;
+
+    /**
+     * 组件标签JSON: ["system","list"]
+     */
+    private String componentTags;
 
     /**
      * 数据源类型(api/sql/static)

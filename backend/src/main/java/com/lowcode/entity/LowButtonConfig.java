@@ -35,19 +35,14 @@ public class LowButtonConfig implements Serializable {
     private String buttonCode;
 
     /**
-     * 所属页面ID
+     * 组件分类(common=通用组件库, business=业务组件库)
      */
-    private Long pageId;
+    private String componentCategory;
 
     /**
-     * 关联表单ID
+     * 组件标签JSON: ["system","user","create"]
      */
-    private Long formId;
-
-    /**
-     * 关联表格ID
-     */
-    private Long tableId;
+    private String componentTags;
 
     /**
      * 位置(toolbar/row/form/dialog/footer)
@@ -134,6 +129,11 @@ public class LowButtonConfig implements Serializable {
      * 显示条件表达式
      */
     private String showCondition;
+
+    /**
+     * 状态
+     */
+    private Boolean status;
 
     /**
      * 是否删除

@@ -57,6 +57,26 @@
               <el-tag size="small" type="info">{{ template.templateType }}</el-tag>
               <el-tag size="small" type="success">{{ template.layoutType }}</el-tag>
             </div>
+            <div class="template-areas">
+              <div class="areas-title">
+                <el-icon><Grid /></el-icon>
+                <span>包含区域</span>
+              </div>
+              <div class="areas-list">
+                <el-tag
+                  v-for="area in getTemplateAreas(template)"
+                  :key="area.id"
+                  size="small"
+                  :type="area.required ? 'danger' : 'info'"
+                  class="area-tag"
+                >
+                  <el-icon>
+                    <component :is="getAreaIcon(area.type)" />
+                  </el-icon>
+                  {{ area.name }}
+                </el-tag>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -78,8 +98,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Search, Files } from '@element-plus/icons-vue'
-import { getPageTemplates, type PageTemplate } from '@/api/page'
+import {
+  Search,
+  Files,
+  Grid,
+  Document,
+  List,
+  Histogram,
+  Operation,
+  Flag,
+  DataLine
+} from '@element-plus/icons-vue'
+import { getPageTemplates, type PageTemplate, type AreaInfo } from '@/api/page'
 
 // Props
 interface Props {
@@ -166,6 +196,32 @@ const handleConfirm = () => {
     emit('select', selectedTemplate.value)
     dialogVisible.value = false
     selectedTemplate.value = null
+  }
+}
+
+// 区域图标映射
+const getAreaIcon = (areaType: string) => {
+  const iconMap: Record<string, any> = {
+    search: Search,
+    content: Document,
+    tree: List,
+    toolbar: Grid,
+    stats: Histogram,
+    charts: DataLine,
+    tabs: Files,
+    header: Flag,
+    custom: Operation
+  }
+  return iconMap[areaType] || Grid
+}
+
+// 从 configTemplate 解析区域
+const getTemplateAreas = (template: PageTemplate): AreaInfo[] => {
+  try {
+    const config = JSON.parse(template.configTemplate || '{}')
+    return config.areas || []
+  } catch {
+    return []
   }
 }
 
@@ -294,6 +350,42 @@ watch(() => props.modelValue, (newVal) => {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .template-areas {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #f0f0f0;
+
+      .areas-title {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #606266;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .areas-list {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .area-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 11px;
+        padding: 0 6px;
+        height: 20px;
+
+        :deep(.el-icon) {
+          font-size: 12px;
+        }
+      }
     }
   }
 }

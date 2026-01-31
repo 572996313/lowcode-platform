@@ -65,10 +65,18 @@
           <span v-else class="text-muted">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="320" fixed="right">
+      <el-table-column label="操作" width="340" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="handleDesign(row)">设计</el-button>
           <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+          <el-button
+            v-if="!row.published"
+            type="warning"
+            link
+            @click="handleSwitchTemplate(row)"
+          >
+            切换模板
+          </el-button>
           <el-button
             v-if="!row.published"
             type="success"
@@ -167,7 +175,7 @@
       </div>
 
       <!-- 编辑页面 -->
-      <el-form v-else label-width="100px" :rules="formRules" ref="formRef">
+      <el-form v-else :model="formData" label-width="100px" :rules="formRules" ref="formRef">
         <el-form-item label="页面名称" prop="pageName">
           <el-input v-model="formData.pageName" placeholder="请输入页面名称" />
         </el-form-item>
@@ -226,6 +234,84 @@
         <el-button @click="menuDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 切换模板弹窗 -->
+    <el-dialog
+      v-model="templateDialogVisible"
+      title="切换页面模板"
+      width="600px"
+    >
+      <div v-if="currentPageForSwitch">
+        <el-alert
+          type="warning"
+          title="切换模板警告"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px"
+        >
+          <p>切换模板将会：</p>
+          <ul style="margin: 8px 0; padding-left: 20px">
+            <li>更新页面布局类型为新模板的布局</li>
+            <li>重置页面配置为新模板的配置</li>
+            <li>如果页面已发布，将自动取消发布状态</li>
+          </ul>
+        </el-alert>
+
+        <div class="current-template-info">
+          <div class="info-title">当前页面信息</div>
+          <div class="info-item">
+            <span class="label">页面名称:</span>
+            <span class="value">{{ currentPageForSwitch.pageName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">当前模板:</span>
+            <el-tag size="small">{{ currentPageForSwitch.pageType }}</el-tag>
+            <el-tag size="small" type="success">{{ currentPageForSwitch.layoutType }}</el-tag>
+          </div>
+        </div>
+
+        <el-divider />
+
+        <div class="template-selection">
+          <div class="selection-header">
+            <span>选择新模板</span>
+            <el-checkbox v-model="keepConfig">保留现有配置（不推荐）</el-checkbox>
+          </div>
+          <div class="template-list">
+            <div
+              v-for="template in templates"
+              :key="template.id"
+              class="template-item"
+              :class="{ selected: selectedNewTemplate?.id === template.id }"
+              @click="selectNewTemplate(template)"
+            >
+              <div class="template-icon">
+                <el-icon size="32"><Files /></el-icon>
+              </div>
+              <div class="template-details">
+                <div class="template-name">{{ template.templateName }}</div>
+                <div class="template-desc">{{ template.description }}</div>
+                <div class="template-meta">
+                  <el-tag size="small">{{ template.templateType }}</el-tag>
+                  <el-tag size="small" type="success">{{ template.layoutType }}</el-tag>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="templateDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="handleConfirmSwitchTemplate"
+          :disabled="!selectedNewTemplate"
+        >
+          确认切换
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -244,6 +330,7 @@ import {
   unpublishPage,
   getPageTemplates,
   createPageFromTemplate,
+  switchPageTemplate,
   type PageConfig,
   type PageTemplate
 } from '@/api/page'
@@ -258,6 +345,12 @@ const total = ref(0)
 // 关联菜单相关
 const menuDialogVisible = ref(false)
 const linkedMenus = ref<Menu[]>([])
+
+// 切换模板相关
+const templateDialogVisible = ref(false)
+const currentPageForSwitch = ref<PageConfig | null>(null)
+const selectedNewTemplate = ref<PageTemplate | null>(null)
+const keepConfig = ref(false)
 
 const queryParams = reactive({
   current: 1,
@@ -510,6 +603,51 @@ const handleViewMenus = async (row: PageConfig) => {
   }
 }
 
+// 切换模板
+const handleSwitchTemplate = async (row: PageConfig) => {
+  currentPageForSwitch.value = row
+  selectedNewTemplate.value = null
+  keepConfig.value = false
+  await loadTemplates()
+  templateDialogVisible.value = true
+}
+
+// 选择新模板
+const selectNewTemplate = (template: PageTemplate) => {
+  selectedNewTemplate.value = template
+}
+
+// 确认切换模板
+const handleConfirmSwitchTemplate = async () => {
+  if (!selectedNewTemplate.value || !currentPageForSwitch.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要将页面【${currentPageForSwitch.value.pageName}】切换为模板【${selectedNewTemplate.value.templateName}】吗？`,
+      '确认切换',
+      {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消'
+      }
+    )
+
+    await switchPageTemplate(currentPageForSwitch.value.id!, {
+      templateId: selectedNewTemplate.value.id,
+      keepConfig: keepConfig.value
+    })
+
+    ElMessage.success('模板切换成功')
+    templateDialogVisible.value = false
+    loadData()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('切换模板失败:', error)
+      ElMessage.error(error.message || '切换模板失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -608,6 +746,119 @@ onMounted(() => {
 
       .template-type {
         margin-left: 8px;
+      }
+    }
+  }
+}
+
+.current-template-info {
+  .info-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #303133;
+    margin-bottom: 12px;
+  }
+
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    .label {
+      color: #606266;
+      font-weight: 500;
+      min-width: 100px;
+    }
+
+    .value {
+      color: #303133;
+    }
+
+    .el-tag {
+      margin-right: 4px;
+    }
+  }
+}
+
+.template-selection {
+  .selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 500;
+    color: #303133;
+  }
+
+  .template-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+
+    .template-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border: 2px solid #e4e7ed;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        border-color: #409eff;
+        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+      }
+
+      &.selected {
+        border-color: #409eff;
+        background-color: #ecf5ff;
+        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+      }
+
+      .template-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f5f7fa;
+        border-radius: 6px;
+        margin-right: 12px;
+        color: #409eff;
+        flex-shrink: 0;
+      }
+
+      .template-details {
+        flex: 1;
+        min-width: 0;
+
+        .template-name {
+          font-size: 14px;
+          font-weight: 500;
+          color: #303133;
+          margin-bottom: 4px;
+        }
+
+        .template-desc {
+          font-size: 12px;
+          color: #909399;
+          margin-bottom: 6px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .template-meta {
+          display: flex;
+          gap: 4px;
+
+          .el-tag {
+            font-size: 11px;
+          }
+        }
       }
     }
   }

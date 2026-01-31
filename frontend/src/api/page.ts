@@ -51,6 +51,9 @@ export interface PageConfig {
   routePath?: string  // 路由路径
   published?: boolean  // 是否已发布
   publishTime?: string  // 发布时间
+  // v2 扩展字段
+  normalizedAreas?: Record<string, NormalizedArea>  // 标准化后的区域（运行时使用）
+  currentTemplate?: PageTemplate  // 当前使用的模板（运行时使用）
 }
 
 // =============================================
@@ -139,6 +142,26 @@ export interface PageTemplate {
   previewImage?: string
   description: string
   isSystem: boolean
+}
+
+// 区域信息类型
+export interface AreaInfo {
+  id: string          // 区域ID
+  type: string        // 区域类型: search, content, tree, toolbar, tabs等
+  name: string        // 区域显示名称
+  required?: boolean   // 是否必需（不能删除）
+  description?: string  // 区域描述
+}
+
+// 标准化区域配置（运行时使用）
+export interface NormalizedArea {
+  id: string
+  type: string        // 区域类型: search, content, tree, toolbar, tabs等
+  name: string        // 区域显示名称
+  enabled: boolean    // 是否启用
+  required: boolean   // 是否必需（不能删除）
+  config?: Record<string, any>   // 区域配置
+  props?: Record<string, any>   // 区域属性
 }
 
 // 分页结果接口
@@ -255,6 +278,19 @@ export const createPageFromTemplate = (params: {
   pageCode: string
 }) => {
   return request.post<number>('/page/template/from-template', params)
+}
+
+// 获取模板的区域配置信息
+export const getPageTemplateAreas = (id: number) => {
+  return request.get<AreaInfo[]>(`/page/template/${id}/areas`)
+}
+
+// 切换页面模板
+export const switchPageTemplate = (pageId: number, data: {
+  templateId: number
+  keepConfig?: boolean
+}) => {
+  return request.post(`/page/${pageId}/switch-template`, data)
 }
 
 // =============================================

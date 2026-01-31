@@ -5,11 +5,13 @@ import com.lowcode.common.Result;
 import com.lowcode.entity.LowButtonConfig;
 import com.lowcode.service.ILowButtonConfigService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -94,4 +96,35 @@ public class ButtonConfigController {
         buttonConfigService.deleteButtonConfig(id);
         return Result.success();
     }
+
+    /**
+     * ✅ 新增：获取按钮库接口
+     */
+    @GetMapping("/library/{libraryType}")
+    @Operation(summary = "获取按钮库", description = "根据组件分类获取按钮列表")
+    public Result<List<LowButtonConfig>> getButtonLibrary(
+            @Parameter(description = "组件分类(common=通用组件库, business=业务组件库)")
+            @PathVariable String libraryType,
+            @Parameter(description = "标签筛选(逗号分隔，如: crud,export)")
+            @RequestParam(required = false) String tags
+    ) {
+        List<LowButtonConfig> buttons;
+        if (tags != null && !tags.isEmpty()) {
+            buttons = buttonConfigService.getByCategoryAndTags(libraryType, tags);
+        } else {
+            buttons = buttonConfigService.getByCategory(libraryType);
+        }
+        return Result.success(buttons);
+    }
+
+    /**
+     * 批量获取按钮配置
+     */
+    @PostMapping("/batch")
+    @Operation(summary = "批量获取按钮配置", description = "根据ID列表批量获取按钮配置")
+    public Result<List<LowButtonConfig>> getButtonsByIds(@RequestBody List<Long> ids) {
+        List<LowButtonConfig> buttons = buttonConfigService.getButtonsByIds(ids);
+        return Result.success(buttons);
+    }
+
 }

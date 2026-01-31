@@ -61,4 +61,24 @@ public interface ILowButtonConfigService extends IService<LowButtonConfig> {
      * 按表格ID批量保存按钮配置
      */
     void batchSaveButtonsByTableId(Long tableId, List<LowButtonConfig> buttons);
+
+    /**
+     * 根据组件分类获取按钮列表
+     */
+    List<LowButtonConfig> getByCategory(String category);
+
+    /**
+     * 根据组件分类和标签获取按钮列表
+     */
+    List<LowButtonConfig> getByCategoryAndTags(String category, String tags);
+
+    /**
+     * 统计指定分类的按钮数量
+     */
+    Long countByCategory(String category);
+
+    /**
+     * 根据ID列表批量获取按钮
+     */
+    List<LowButtonConfig> getButtonsByIds(List<Long> ids);
 }

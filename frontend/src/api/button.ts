@@ -5,9 +5,11 @@ export interface ButtonConfig {
   id?: number
   buttonName: string
   buttonCode: string
-  pageId?: number
-  formId?: number
-  tableId?: number
+  // pageId?: number  // 已废弃
+  // formId?: number  // 已废弃
+  // tableId?: number  // 已废弃
+  componentCategory?: 'common' | 'business'  // 新增：组件分类
+  componentTags?: string  // 新增：组件标签JSON
   position: 'toolbar' | 'row' | 'form' | 'dialog' | 'footer'
   buttonType?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'default'
   buttonSize?: 'large' | 'default' | 'small'
@@ -84,3 +86,32 @@ export const updateButton = (id: number, data: ButtonConfig) => {
 export const deleteButton = (id: number) => {
   return request.delete(`/button/${id}`)
 }
+
+// ✅ 新增接口
+
+// 批量获取按钮配置（根据ID列表）
+export const getButtonsByIds = (ids: number[]) => {
+  return request.post<ButtonConfig[]>('/button/batch', ids)
+}
+
+// ❌ 废弃接口（保留但注释）
+
+// // 根据表单ID查询按钮（已废弃，请使用组件库接口）
+// export const getButtonsByFormId = (formId: number) => {
+//   return request.get<ButtonConfig[]>(`/button/form/${formId}`)
+// }
+
+// // 根据表格ID查询按钮（已废弃，请使用组件库接口）
+// export const getButtonsByTableId = (tableId: number) => {
+//   return request.get<ButtonConfig[]>(`/button/table/${tableId}`)
+// }
+
+// // 按表单ID批量保存按钮（已废弃）
+// export const batchSaveButtonsByFormId = (formId: number, buttons: ButtonConfig[]) => {
+//   return request.post(`/button/batch/form/${formId}`, buttons)
+// }
+
+// // 按表格ID批量保存按钮（已废弃）
+// export const batchSaveButtonsByTableId = (tableId: number, buttons: ButtonConfig[]) => {
+//   return request.post(`/button/batch/table/${tableId}`, buttons)
+// }
