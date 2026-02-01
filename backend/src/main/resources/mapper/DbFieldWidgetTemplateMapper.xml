@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lowcode.mapper.DbFieldWidgetTemplateMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.lowcode.entity.DbFieldWidgetTemplate">
+        <id column="id" property="id"/>
+        <result column="table_id" property="tableId"/>
+        <result column="field_id" property="fieldId"/>
+        <result column="template_name" property="templateName"/>
+        <result column="template_code" property="templateCode"/>
+        <result column="widget_type" property="widgetType"/>
+        <result column="widget_config" property="widgetConfig"/>
+        <result column="is_system" property="isSystem"/>
+        <result column="description" property="description"/>
+        <result column="enabled" property="enabled"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, table_id, field_id, template_name, template_code, widget_type, widget_config,
+        is_system, description, enabled, sort_order, deleted, create_time, update_time
+    </sql>
+
+    <!-- 根据字段ID获取所有启用的模板 -->
+    <select id="selectEnabledTemplatesByFieldId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM db_field_widget_template
+        WHERE field_id = #{fieldId}
+        AND enabled = 1
+        AND deleted = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 根据表ID获取所有模板 -->
+    <select id="selectTemplatesByTableId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM db_field_widget_template
+        WHERE table_id = #{tableId}
+        AND deleted = 0
+        ORDER BY table_id, field_id, sort_order ASC, id ASC
+    </select>
+
+    <!-- 根据字段ID和模板编码获取模板 -->
+    <select id="selectByFieldIdAndCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM db_field_widget_template
+        WHERE field_id = #{fieldId}
+        AND template_code = #{templateCode}
+        AND deleted = 0
+        LIMIT 1
+    </select>
+
+</mapper>

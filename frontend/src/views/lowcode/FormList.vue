@@ -22,6 +22,15 @@
           @keyup.enter="handleSearch"
         />
         <el-select
+          v-model="searchForm.sourceType"
+          placeholder="来源类型"
+          clearable
+          style="width: 120px; margin-left: 12px"
+        >
+          <el-option label="模板" value="template" />
+          <el-option label="自定义" value="custom" />
+        </el-select>
+        <el-select
           v-model="searchForm.status"
           placeholder="状态"
           clearable
@@ -54,6 +63,13 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="formName" label="表单名称" min-width="150" />
         <el-table-column prop="formCode" label="表单编码" min-width="150" />
+        <el-table-column label="来源类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.sourceType === 'template' ? 'success' : 'info'" size="small">
+              {{ row.sourceType === 'template' ? '模板' : '自定义' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="formType" label="表单类型" width="120" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -93,6 +109,12 @@
         />
       </div>
     </div>
+
+    <!-- 模板选择对话框 -->
+    <FormTemplateSelectDialog
+      ref="templateSelectDialogRef"
+      @confirm="handleTemplateSelect"
+    />
   </div>
 </template>
 
@@ -101,13 +123,16 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getFormList, deleteForm, type FormConfig } from '@/api/form'
+import FormTemplateSelectDialog from '@/components/designer/FormTemplateSelectDialog.vue'
 
 const router = useRouter()
+const templateSelectDialogRef = ref()
 
 // 搜索表单
 const searchForm = reactive({
   formName: '',
   formCode: '',
+  sourceType: undefined as string | undefined,
   status: undefined as boolean | undefined
 })
 
@@ -152,6 +177,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.formName = ''
   searchForm.formCode = ''
+  searchForm.sourceType = undefined
   searchForm.status = undefined
   pagination.current = 1
   loadData()
@@ -159,7 +185,15 @@ const handleReset = () => {
 
 // 新建表单
 const handleCreate = () => {
-  router.push({ name: 'FormDesigner' })
+  templateSelectDialogRef.value?.open()
+}
+
+// 模板选择确认
+const handleTemplateSelect = (templateCode: string) => {
+  router.push({
+    name: 'FormDesigner',
+    query: { template: templateCode }
+  })
 }
 
 // 编辑表单

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lowcode.mapper.LowDropdownConfigMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.lowcode.entity.LowDropdownConfig">
+        <id column="id" property="id"/>
+        <result column="config_name" property="configName"/>
+        <result column="config_code" property="configCode"/>
+        <result column="dropdown_type" property="dropdownType"/>
+        <result column="sql_template" property="sqlTemplate"/>
+        <result column="label_field" property="labelField"/>
+        <result column="value_field" property="valueField"/>
+        <result column="parent_field" property="parentField"/>
+        <result column="param_config" property="paramConfig"/>
+        <result column="extra_fields" property="extraFields"/>
+        <result column="description" property="description"/>
+        <result column="enabled" property="enabled"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, config_name, config_code, dropdown_type, sql_template, label_field, value_field,
+        parent_field, param_config, extra_fields, description, enabled, sort_order,
+        created_by, create_time, update_time, deleted
+    </sql>
+
+    <!-- 根据配置编码查询 -->
+    <select id="selectByConfigCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM low_dropdown_config
+        WHERE config_code = #{configCode}
+        AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 执行动态 SQL 查询 -->
+    <select id="executeQuery" resultType="java.util.HashMap">
+        ${sql}
+    </select>
+
+</mapper>

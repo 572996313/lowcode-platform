@@ -26,6 +26,16 @@ public class LowFormConfig implements Serializable {
     private Long id;
 
     /**
+     * 关联的模板ID
+     */
+    private Long templateId;
+
+    /**
+     * 来源类型（template=模板 custom=自定义）
+     */
+    private String sourceType;
+
+    /**
      * 表单名称
      */
     private String formName;

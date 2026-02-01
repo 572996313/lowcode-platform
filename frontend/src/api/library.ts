@@ -1,4 +1,11 @@
 import request from '@/utils/request'
+import type {
+  TemplateReferenceResult,
+  SyncRequest,
+  SyncResult,
+  TemplateType,
+  SyncStrategy
+} from '@/types/page-v6'
 
 /**
  * 组件库相关接口
@@ -60,4 +67,49 @@ export const getLibraryStats = () => {
       tables: number
     }
   }>('/library/stats')
+}
+
+// ============= 模板引用管理 API =============
+
+/**
+ * 查询引用了指定模板的页面列表
+ * @param templateType 模板类型 (button/column/field)
+ * @param templateId 模板ID
+ * @returns 引用该模板的页面列表
+ */
+export const getTemplateReferences = (
+  templateType: TemplateType,
+  templateId: number
+) => {
+  return request.get<TemplateReferenceResult>(`/template/${templateType}/${templateId}/references`)
+}
+
+/**
+ * 同步模板到页面
+ * @param templateType 模板类型
+ * @param templateId 模板ID
+ * @param pageIds 要同步的页面ID列表
+ * @param strategy 同步策略 (merge=合并保留overwrite, replace=替换清空overwrite)
+ * @returns 同步结果
+ */
+export const syncTemplateToPages = (
+  templateType: TemplateType,
+  templateId: number,
+  pageIds: number[],
+  strategy: SyncStrategy
+) => {
+  return request.post<SyncResult>(`/template/${templateType}/${templateId}/sync`, {
+    pageIds,
+    strategy
+  })
+}
+
+/**
+ * 批量查询模板引用关系
+ * @param requests 批量查询请求列表
+ */
+export const batchGetTemplateReferences = (
+  requests: Array<{ templateType: TemplateType; templateId: number }>
+) => {
+  return request.post<TemplateReferenceResult[]>('/template/references/batch', requests)
 }

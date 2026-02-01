@@ -11,7 +11,9 @@ import com.lowcode.common.exception.BusinessException;
 import com.lowcode.entity.LowButtonConfig;
 import com.lowcode.mapper.LowButtonConfigMapper;
 import com.lowcode.service.ILowButtonConfigService;
+import com.lowcode.service.ITemplateReferenceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +28,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LowButtonConfigServiceImpl extends ServiceImpl<LowButtonConfigMapper, LowButtonConfig> implements ILowButtonConfigService {
+
+    private final ITemplateReferenceService templateReferenceService;
+
+    public LowButtonConfigServiceImpl(@Lazy ITemplateReferenceService templateReferenceService) {
+        this.templateReferenceService = templateReferenceService;
+    }
 
     @Override
     public PageResult<LowButtonConfig> getButtonList(Map<String, Object> params) {
@@ -150,6 +157,12 @@ public class LowButtonConfigServiceImpl extends ServiceImpl<LowButtonConfigMappe
         LowButtonConfig buttonConfig = getById(id);
         if (buttonConfig == null) {
             throw new BusinessException("按钮配置不存在");
+        }
+
+        // 检查是否被页面引用
+        if (templateReferenceService.isReferenced("button", id)) {
+            int refCount = templateReferenceService.getReferenceCount("button", id);
+            throw new BusinessException("该按钮模板被 " + refCount + " 个页面引用，无法删除。请先在页面中断开引用或删除相关页面。");
         }
 
         removeById(id);

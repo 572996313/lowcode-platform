@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
 import { getComponent } from './componentMap'
-import { getPublishedPages } from '@/api/page'
 
 const staticRoutes: RouteRecordRaw[] = [
   {
@@ -22,12 +21,26 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/home/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
       },
+      // V6 版本 - 页面管理
+      {
+        path: 'lowcode/PageManage',
+        name: 'PageManage',
+        component: () => import('@/views/lowcode-v6/PageManageV6.vue'),
+        meta: { title: '页面管理', icon: 'Document' }
+      },
       {
         path: 'lowcode/PageDesigner',
         name: 'PageDesigner',
-        component: () => import('@/views/lowcode/PageDesigner.vue'),
+        component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
         meta: { title: '页面设计器' }
       },
+      {
+        path: 'lowcode/PageDesigner/:id',
+        name: 'PageDesignerEdit',
+        component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
+        meta: { title: '编辑页面' }
+      },
+      // 保留的其他设计器
       {
         path: 'lowcode/FormDesigner',
         name: 'FormDesigner',
@@ -47,9 +60,46 @@ const staticRoutes: RouteRecordRaw[] = [
         meta: { title: '按钮管理' }
       },
       {
-        path: 'page/preview',
+        path: 'lowcode/TemplateManage',
+        name: 'TemplateManage',
+        component: () => import('@/views/lowcode/TemplateManage.vue'),
+        meta: { title: '模板管理', icon: 'Tickets' }
+      },
+      {
+        path: 'lowcode/DbTableManage',
+        name: 'DbTableManage',
+        component: () => import('@/views/lowcode/DbTableList.vue'),
+        meta: { title: '库表管理', icon: 'Database' }
+      },
+      {
+        path: 'lowcode/FieldWidgetBinding',
+        name: 'FieldWidgetBinding',
+        component: () => import('@/views/lowcode/FieldWidgetBinding.vue'),
+        meta: { title: '字段-控件绑定', icon: 'Link' }
+      },
+      {
+        path: 'lowcode/DropdownManage',
+        name: 'DropdownManage',
+        component: () => import('@/views/lowcode/DropdownManage.vue'),
+        meta: { title: '下拉管理', icon: 'ArrowDown' }
+      },
+      {
+        path: 'lowcode/FormTemplateManage',
+        name: 'FormTemplateManage',
+        component: () => import('@/views/lowcode/FormTemplateManage.vue'),
+        meta: { title: '表单模板管理', icon: 'Tickets' }
+      },
+      {
+        path: 'system/DictManage',
+        name: 'DictManage',
+        component: () => import('@/views/system/DictManage.vue'),
+        meta: { title: '字典管理', icon: 'List' }
+      },
+      // 页面预览（V6 运行时）
+      {
+        path: 'page/preview/:id',
         name: 'PagePreview',
-        component: () => import('@/views/lowcode/PageRender.vue'),
+        component: () => import('@/views/lowcode-v6/PageRenderV6.vue'),
         meta: { title: '页面预览' }
       }
     ]
@@ -79,16 +129,26 @@ export const addDynamicRoutes = async () => {
 
       if (menu.menuType === 2 && menu.routePath) {
         // 菜单类型 - 添加到路由
+        console.log(`处理菜单: ${menu.menuName}`, JSON.stringify(menu, null, 2))
+
         // 尝试获取组件
         let component = null
         if (menu.componentPath) {
           component = getComponent(menu.componentPath)
         }
 
-        // 如果找不到组件，使用占位组件
+        // 如果找不到组件，但有 pageId，则使用 PageRenderV6 渲染低代码页面
+        if (!component && menu.pageId) {
+          component = getComponent('/views/lowcode-v6/PageRenderV6.vue')
+          console.log(`✓ 菜单 ${menu.menuName} 使用 PageRenderV6 渲染页面 pageId=${menu.pageId}`)
+        }
+
+        // 如果找不到组件也没有 pageId，使用占位组件
         if (!component) {
           component = getComponent('/views/common/PlaceholderPage.vue')
-          console.warn(`菜单 ${menu.menuName} 未配置组件或组件不存在，使用占位页面`)
+          console.warn(`✗ 菜单 ${menu.menuName} 使用占位页面`)
+          console.warn(`  - componentPath: ${menu.componentPath}`)
+          console.warn(`  - pageId: ${menu.pageId}`)
         }
 
         // routePath 可能是 /system/menu 或 system/menu
@@ -114,8 +174,8 @@ export const addDynamicRoutes = async () => {
               // 传递菜单信息给占位组件
               menuName: menu.menuName,
               menuCode: menu.menuCode,
-              pageId: menu.pageId, // 传递页面ID
-              isPlaceholder: !menu.componentPath // 标记是否为占位页面
+              pageId: menu.pageId,
+              isPlaceholder: !menu.componentPath
             }
           })
         }
@@ -135,39 +195,6 @@ export const addDynamicRoutes = async () => {
   dynamicRoutes.forEach(route => {
     router.addRoute('Layout', route)
   })
-
-  // 加载已发布的低代码页面路由（带参数路由，作为兜底）
-  try {
-    const publishedPages = await getPublishedPages()
-    console.log('加载已发布页面数:', publishedPages.length)
-
-    publishedPages.forEach(page => {
-      if (page.id) {
-        // 使用带参数的路由，避免与菜单路由冲突
-        const routePath = `page/publish/${page.id}`
-
-        // 检查路由是否已注册
-        if (registeredRoutes.has(routePath)) {
-          console.warn(`路由 ${routePath} 已注册，跳过`)
-          return
-        }
-        registeredRoutes.add(routePath)
-
-        router.addRoute('Layout', {
-          path: routePath,
-          name: `Page_${page.id}`,
-          component: () => import('@/views/lowcode/PageRender.vue'),
-          meta: {
-            title: page.pageName,
-            pageId: page.id
-          }
-        })
-        console.log(`注册页面路由: ${routePath} -> ${page.pageName}`)
-      }
-    })
-  } catch (error) {
-    console.error('加载已发布页面路由失败:', error)
-  }
 }
 
 // 路由守卫

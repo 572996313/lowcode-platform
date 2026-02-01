@@ -1,235 +1,169 @@
 /**
- * 配置版本转换工具
- * 支持 v1 (searchArea + contentArea) 和 v2 (areas 数组) 格式之间的相互转换
+ * V3 配置工具
+ * 页面配置使用 V3 格式，支持灵活的布局架构
  */
+
+import type {
+  V3Config,
+  NormalizedAreaV3,
+  AreaInfo
+} from '@/api/page'
 
 // ============ 类型定义 ============
 
-export interface V1Config {
-  searchArea?: {
-    enabled: boolean
-    title: string
-    fields: any[]
-  }
-  contentArea?: {
-    type: 'table' | 'form'
-    configId: number
-    title: string
-    showToolbar: boolean
-  }
-}
-
-export interface V2Config {
-  version: 2
-  templateCode?: string
-  layoutType?: string
-  areas: NormalizedArea[]
-}
-
-export interface NormalizedArea {
-  id: string
-  type: string // search, content, tree, toolbar, tabs, stats, charts, header, custom
-  name: string
-  enabled: boolean
-  required?: boolean
-  config?: Record<string, any>
-  props?: Record<string, any>
-}
-
-export interface AreaInfo {
-  id: string
-  type: string
-  name: string
-  required?: boolean
-  description?: string
-}
+// V3 配置类型定义在 @/api/page 中
 
 // ============ 版本检测 ============
 
 /**
  * 检测配置版本
  * @param config - 配置对象
- * @returns 版本号 (1 或 2) 或 null
+ * @returns 是否为 V3 配置
  */
-export function detectVersion(config: any): number | null {
-  if (!config) {
-    return null
-  }
-
-  // v2 格式必须有 version 字段且值为 2，且有 areas 数组
-  if (config.version === 2 && Array.isArray(config.areas)) {
-    return 2
-  }
-
-  // v1 格式有 searchArea 或 contentArea 字段
-  if (config.searchArea || config.contentArea) {
-    return 1
-  }
-
-  return null
+export function isV3Config(config: any): config is V3Config {
+  return config && config.version === 3 && Array.isArray(config.areas)
 }
 
-// ============ V1 转 V2 ============
+/**
+ * 检测是否为 V4 配置
+ * @param config - 配置对象
+ * @returns 是否为 V4 配置
+ */
+export function isV4Config(config: any): boolean {
+  return config && config.version === 4 && Array.isArray(config.areas)
+}
 
 /**
- * 将 v1 格式转换为 v2 格式
- * @param v1Config - v1 配置对象
- * @param templateAreas - 模板区域定义（可选）
- * @returns v2 配置对象
+ * 检查并迁移旧版本配置到 V3
+ * @param configStr - 配置字符串或对象
+ * @returns V3 配置对象
  */
-export function v1ToV2(v1Config: V1Config, templateAreas?: AreaInfo[]): V2Config {
-  const areas: NormalizedArea[] = []
+export function ensureV3Config(config: any): V3Config {
+  // 如果已经是 V3，直接返回
+  if (isV3Config(config)) {
+    return config
+  }
 
-  // 转换查询区
-  if (v1Config.searchArea) {
+  // 如果是空或无效配置，返回默认 V3 配置
+  if (!config) {
+    return createDefaultV3Config()
+  }
+
+  // 尝试从 V1/V2 迁移（简化版：只转换常见的 search 和 content 区域）
+  return migrateToV3(config)
+}
+
+/**
+ * 迁移旧版本配置到 V3
+ */
+function migrateToV3(oldConfig: any): V3Config {
+  const areas: NormalizedAreaV3[] = []
+
+  // 迁移 V1 格式的 searchArea
+  if (oldConfig.searchArea) {
     areas.push({
       id: 'search',
       type: 'search',
       name: '查询区',
-      enabled: v1Config.searchArea.enabled,
+      enabled: oldConfig.searchArea.enabled ?? true,
+      required: false,
+      position: 'top',
+      role: 'secondary',
+      layoutHints: { collapsible: true, collapsed: false },
       config: {
-        title: v1Config.searchArea.title,
-        fields: v1Config.searchArea.fields || []
-      }
-    })
-  } else if (templateAreas?.find(a => a.id === 'search')) {
-    // 如果模板定义了 search 区域但配置中没有，添加默认配置
-    areas.push({
-      id: 'search',
-      type: 'search',
-      name: '查询区',
-      enabled: true,
-      config: {
-        title: '查询条件',
-        fields: []
+        title: oldConfig.searchArea.title || '查询条件',
+        fields: oldConfig.searchArea.fields || []
       }
     })
   }
 
-  // 转换内容区
-  if (v1Config.contentArea) {
+  // 迁移 V1 格式的 contentArea
+  if (oldConfig.contentArea) {
     areas.push({
       id: 'content',
       type: 'content',
       name: '内容区',
       enabled: true,
-      required: true,
+      required: false,
+      position: 'main',
+      role: 'primary',
+      layoutHints: { flex: 1, scrollable: true },
       config: {
-        title: v1Config.contentArea.title,
-        componentType: v1Config.contentArea.type,
-        configId: v1Config.contentArea.configId,
-        showToolbar: v1Config.contentArea.showToolbar
-      }
-    })
-  } else if (templateAreas?.find(a => a.id === 'content')) {
-    // 如果模板定义了 content 区域但配置中没有，添加默认配置
-    areas.push({
-      id: 'content',
-      type: 'content',
-      name: '内容区',
-      enabled: true,
-      required: true,
-      config: {
-        title: '数据列表',
-        componentType: 'table',
-        configId: null,
-        showToolbar: true
+        title: oldConfig.contentArea.title || '数据列表',
+        componentType: oldConfig.contentArea.type || 'table',
+        configId: oldConfig.contentArea.configId,
+        showToolbar: oldConfig.contentArea.showToolbar !== false
       }
     })
   }
 
-  // 添加模板定义的其他区域（如果未在配置中）
-  if (templateAreas) {
-    const configuredIds = new Set(areas.map(a => a.id))
-
-    for (const templateArea of templateAreas) {
-      if (!configuredIds.has(templateArea.id)) {
-        areas.push({
-          id: templateArea.id,
-          type: templateArea.type,
-          name: templateArea.name,
-          enabled: false,
-          required: templateArea.required,
-          config: getDefaultConfigForArea(templateArea.type)
-        })
-      }
+  // 如果是 V2 格式（有 areas 数组）
+  if (Array.isArray(oldConfig.areas)) {
+    for (const area of oldConfig.areas) {
+      areas.push({
+        ...area,
+        position: (area as any).position || getDefaultPositionForType(area.type, area.id).position,
+        role: (area as any).role || getDefaultPositionForType(area.type, area.id).role,
+        layoutHints: (area as any).layoutHints || getDefaultPositionForType(area.type, area.id).layoutHints
+      } as NormalizedAreaV3)
     }
   }
 
   return {
-    version: 2,
-    areas
+    version: 3,
+    templateCode: oldConfig.templateCode,
+    layoutType: oldConfig.layoutType,
+    layoutConfig: oldConfig.layoutConfig,
+    areas: areas.length > 0 ? areas : createDefaultV3Config().areas
   }
 }
 
-// ============ V2 转 V1 ============
+// ============ 默认配置 ============
 
 /**
- * 将 v2 格式转换为 v1 格式（向后兼容）
- * @param v2Config - v2 配置对象
- * @returns v1 配置对象
+ * 创建默认 V3 配置
  */
-export function v2ToV1(v2Config: V2Config): V1Config {
-  const v1Config: V1Config = {}
-
-  // 查找 search 和 content 区域
-  const searchArea = v2Config.areas?.find(a => a.id === 'search' && a.enabled)
-  const contentArea = v2Config.areas?.find(a => a.id === 'content' && a.enabled)
-
-  // 转换查询区
-  if (searchArea?.config) {
-    v1Config.searchArea = {
-      enabled: searchArea.enabled,
-      title: searchArea.config.title || '查询条件',
-      fields: searchArea.config.fields || []
-    }
+export function createDefaultV3Config(): V3Config {
+  return {
+    version: 3,
+    layoutType: 'top-bottom',
+    areas: [
+      {
+        id: 'search',
+        type: 'search',
+        name: '查询区',
+        enabled: true,
+        required: false,
+        position: 'top',
+        role: 'secondary',
+        layoutHints: { collapsible: true, collapsed: false },
+        config: {
+          title: '查询条件',
+          fields: []
+        }
+      },
+      {
+        id: 'content',
+        type: 'content',
+        name: '内容区',
+        enabled: true,
+        required: false,
+        position: 'main',
+        role: 'primary',
+        layoutHints: { flex: 1, scrollable: true },
+        config: {
+          title: '数据列表',
+          componentType: 'table',
+          configId: null,
+          showToolbar: true
+        }
+      }
+    ]
   }
-
-  // 转换内容区
-  if (contentArea?.config) {
-    v1Config.contentArea = {
-      type: contentArea.config.componentType || 'table',
-      configId: contentArea.config.configId,
-      title: contentArea.config.title || '数据列表',
-      showToolbar: contentArea.config.showToolbar !== false
-    }
-  }
-
-  return v1Config
 }
-
-// ============ 标准化区域配置 ============
-
-/**
- * 标准化区域配置为对象（以 areaId 为 key）
- * @param areas - 区域数组
- * @returns 标准化后的区域对象
- */
-export function normalizeAreas(areas: NormalizedArea[]): Record<string, NormalizedArea> {
-  const result: Record<string, NormalizedArea> = {}
-
-  for (const area of areas) {
-    result[area.id] = { ...area }
-  }
-
-  return result
-}
-
-/**
- * 将区域对象转换为数组
- * @param areasObj - 区域对象
- * @returns 区域数组
- */
-export function denormalizeAreas(areasObj: Record<string, NormalizedArea>): NormalizedArea[] {
-  return Object.values(areasObj).filter(a => a.enabled !== false)
-}
-
-// ============ 工具函数 ============
 
 /**
  * 获取区域类型的默认配置
- * @param areaType - 区域类型
- * @returns 默认配置
  */
 function getDefaultConfigForArea(areaType: string): Record<string, any> {
   const defaults: Record<string, any> = {
@@ -280,28 +214,104 @@ function getDefaultConfigForArea(areaType: string): Record<string, any> {
   return defaults[areaType] || {}
 }
 
+// ============ 区域布局工具 ============
+
+/**
+ * 获取区域类型和ID的默认位置和布局提示
+ */
+function getDefaultPositionForType(
+  type: string,
+  id: string
+): Pick<NormalizedAreaV3, 'position' | 'role' | 'layoutHints'> {
+  const idLower = id.toLowerCase()
+
+  // 工具栏位置推断
+  if (type === 'toolbar') {
+    if (idLower.includes('top') || idLower === 'toolbar') {
+      return {
+        position: 'top',
+        role: 'auxiliary',
+        layoutHints: { order: 0 }
+      }
+    }
+    if (idLower.includes('content') || idLower.includes('main')) {
+      return {
+        position: 'main',
+        role: 'auxiliary',
+        layoutHints: { order: -1 }
+      }
+    }
+  }
+
+  // 查询区默认在顶部
+  if (type === 'search' || idLower === 'search') {
+    return {
+      position: 'top',
+      role: 'secondary',
+      layoutHints: { collapsible: true, collapsed: false }
+    }
+  }
+
+  // 树形区默认在左侧
+  if (type === 'tree' || idLower.includes('tree')) {
+    return {
+      position: 'left',
+      role: 'secondary',
+      layoutHints: { width: '280px', resizable: true }
+    }
+  }
+
+  // 主内容区
+  if (type === 'content' || idLower === 'content' || idLower === 'main') {
+    return {
+      position: 'main',
+      role: 'primary',
+      layoutHints: { flex: 1, scrollable: true }
+    }
+  }
+
+  // 底部面板
+  if (idLower.includes('bottom')) {
+    return {
+      position: 'bottom',
+      role: 'secondary',
+      layoutHints: { height: '300px', resizable: true }
+    }
+  }
+
+  // 默认为主内容区
+  return {
+    position: 'main',
+    role: 'primary',
+    layoutHints: {}
+  }
+}
+
+// ============ 区域操作 ============
+
 /**
  * 合并模板区域定义和页面配置
- * @param templateAreas - 模板定义的区域
- * @param pageAreas - 页面配置的区域
- * @returns 合并后的完整区域配置
  */
 export function mergeTemplateAndPageAreas(
   templateAreas: AreaInfo[],
-  pageAreas: Record<string, NormalizedArea>
-): Record<string, NormalizedArea> {
-  const result: Record<string, NormalizedArea> = {}
+  pageAreas: Record<string, NormalizedAreaV3>
+): Record<string, NormalizedAreaV3> {
+  const result: Record<string, NormalizedAreaV3> = {}
 
   // 先添加模板定义的所有区域
   for (const templateArea of templateAreas) {
     const pageArea = pageAreas[templateArea.id]
+    const defaults = getDefaultPositionForType(templateArea.type, templateArea.id)
 
     result[templateArea.id] = {
       id: templateArea.id,
       type: templateArea.type,
       name: templateArea.name,
-      enabled: pageArea?.enabled ?? templateArea.required ?? true,
-      required: templateArea.required,
+      enabled: pageArea?.enabled ?? (templateArea.required === true),
+      required: templateArea.required === true,
+      position: pageArea?.position || defaults.position,
+      role: pageArea?.role || defaults.role,
+      layoutHints: pageArea?.layoutHints || defaults.layoutHints,
       config: pageArea?.config || getDefaultConfigForArea(templateArea.type),
       props: pageArea?.props
     }
@@ -318,40 +328,133 @@ export function mergeTemplateAndPageAreas(
 }
 
 /**
- * 验证配置完整性
- * @param config - v2 配置对象
- * @param templateAreas - 模板区域定义
- * @returns 验证结果和错误消息
+ * V3 配置标准化为对象（以 areaId 为 key）
  */
-export function validateConfig(
-  config: V2Config,
+export function normalizeV3Areas(v3Config: V3Config): Record<string, NormalizedAreaV3> {
+  const result: Record<string, NormalizedAreaV3> = {}
+
+  for (const area of v3Config.areas) {
+    result[area.id] = { ...area }
+  }
+
+  return result
+}
+
+/**
+ * 将 V3 区域对象转换为数组
+ */
+export function denormalizeV3Areas(areasObj: Record<string, NormalizedAreaV3>): NormalizedAreaV3[] {
+  return Object.values(areasObj).filter(a => a.enabled !== false)
+}
+
+// ============ 配置验证 ============
+
+/**
+ * 验证 V3 配置完整性
+ */
+export function validateV3Config(
+  config: V3Config,
   templateAreas: AreaInfo[]
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = []
 
   // 验证必填区域
   for (const area of templateAreas) {
-    if (area.required) {
+    if (area.required === true) {
       const configArea = config.areas?.find(a => a.id === area.id)
-      if (!configArea || !configArea.enabled) {
+      if (!configArea || configArea.enabled === false) {
         errors.push(`${area.name} 是必填区域，不能禁用`)
       }
     }
   }
 
-  // 验证内容区配置
-  const contentArea = config.areas?.find(a => a.id === 'content' && a.enabled)
-  if (contentArea && contentArea.config) {
-    if (!contentArea.config.componentType) {
-      errors.push('内容区必须指定组件类型（table 或 form）')
-    }
-    if (!contentArea.config.configId) {
-      errors.push('内容区必须选择表格或表单配置')
+  // 验证启用的内容区配置
+  const contentArea = config.areas?.find(a => a.id === 'content' && a.enabled === true)
+  if (contentArea) {
+    if (contentArea.config?.componentType && !contentArea.config.configId) {
+      errors.push('内容区已选择组件类型，请选择对应的表格或表单配置')
     }
   }
 
   return {
     valid: errors.length === 0,
     errors
+  }
+}
+
+// ============ 配置序列化 ============
+
+/**
+ * 序列化 V3 配置为 JSON 字符串
+ */
+export function stringifyV3Config(config: V3Config): string {
+  try {
+    return JSON.stringify(config)
+  } catch (e) {
+    console.error('序列化 V3 配置失败:', e)
+    return JSON.stringify(createDefaultV3Config())
+  }
+}
+
+/**
+ * 解析配置字符串为 V3 配置对象
+ * 支持 V4 格式自动转换为 V3
+ */
+export function parseV3Config(configStr?: string | object): V3Config {
+  if (!configStr) {
+    return createDefaultV3Config()
+  }
+
+  // 如果已经是对象，直接使用
+  if (typeof configStr === 'object') {
+    const config = ensureV3Config(configStr)
+    // 如果是 V4 格式，转换为 V3
+    if (isV4Config(configStr)) {
+      return convertV4ToV3(configStr)
+    }
+    return config
+  }
+
+  try {
+    const config = JSON.parse(configStr as string)
+    // 如果是 V4 格式，转换为 V3
+    if (isV4Config(config)) {
+      return convertV4ToV3(config)
+    }
+    return ensureV3Config(config)
+  } catch (e) {
+    console.error('解析配置失败:', e)
+    return createDefaultV3Config()
+  }
+}
+
+/**
+ * 将 V4 配置转换为 V3 配置
+ */
+function convertV4ToV3(v4Config: any): V3Config {
+  const areas: NormalizedAreaV3[] = []
+
+  if (v4Config.areas && Array.isArray(v4Config.areas)) {
+    for (const area of v4Config.areas) {
+      areas.push({
+        id: area.id,
+        type: area.type,
+        name: area.name,
+        enabled: area.enabled !== false,
+        required: false,
+        position: area.position || getDefaultPositionForType(area.type, area.id).position,
+        role: area.role || getDefaultPositionForType(area.type, area.id).role,
+        layoutHints: area.layoutHints || getDefaultPositionForType(area.type, area.id).layoutHints,
+        config: area.config || {}
+      })
+    }
+  }
+
+  return {
+    version: 3,
+    templateCode: v4Config.templateCode,
+    layoutType: v4Config.layoutType || 'top-bottom',
+    layoutConfig: v4Config.layoutConfig,
+    areas: areas.length > 0 ? areas : createDefaultV3Config().areas
   }
 }

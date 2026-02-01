@@ -6,33 +6,47 @@ import { request } from './request'
 import { useDialogManager } from './dialogManager'
 import { useDrawerManager } from './drawerManager'
 import FormRender from '@/components/render/FormRender.vue'
+import TableRender from '@/components/render/TableRender.vue'
 
 /**
  * 按钮动作配置接口
  */
 export interface ActionConfig {
-  // dialog 配置
-  formId?: number
+  // 通用配置
+  componentType?: 'form' | 'table'  // 组件类型(新增)
+  configId?: number  // 表单/表格ID(新增,统一使用configId)
+
+  // === dialog/drawer 配置 ===
   title?: string
   width?: string
-  mode?: 'add' | 'edit'
+  size?: 'small' | 'medium' | 'large'
+
+  // 表单模式配置
+  mode?: 'add' | 'edit' | 'view' | 'select' | 'detail'  // 新增 select 和 detail
   dataUrl?: string
   submitUrl?: string
+
+  // 表格选择模式配置(新增)
+  multiple?: boolean  // 是否多选
+  selectField?: string  // 返回字段(如 'id')
+  onConfirm?: {
+    action: 'callback' | 'api'  // 回调类型
+    targetField?: string  // callback: 填充到父表单字段
+    url?: string  // api: 回调接口
+  }
+
   successAction?: {
     type: 'close' | 'refresh' | 'redirect'
     message?: string
     redirectUrl?: string
   }
 
-  // drawer 配置
-  size?: 'small' | 'medium' | 'large'
-
-  // route 配置
+  // === route 配置 ===
   path?: string
   openType?: 'push' | 'replace'
   query?: Record<string, any>
 
-  // API 配置
+  // === API 配置 ===
   url?: string
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   params?: {
@@ -40,8 +54,11 @@ export interface ActionConfig {
     custom?: Record<string, any>
   }
 
-  // confirm 配置
+  // === confirm 配置 ===
   action?: ActionConfig
+
+  // === 向后兼容(已废弃) ===
+  formId?: number  // 已废弃,请使用 componentType + configId
 }
 
 /**
@@ -146,6 +163,11 @@ export class ButtonActionHandler {
    * 推断动作类型
    */
   private inferActionType(config: ActionConfig): string {
+    // 优先检查新格式: componentType + configId
+    if (config.componentType && config.configId) {
+      return config.componentType === 'table' && config.mode === 'select' ? 'table-select' : 'dialog'
+    }
+    // 向后兼容: formId 存在则认为是表单弹窗
     if (config.formId) return 'dialog'
     if (config.path) return 'route'
     if (config.url) return 'api'
@@ -153,9 +175,40 @@ export class ButtonActionHandler {
   }
 
   /**
-   * 打开表单弹窗
+   * 打开弹窗(表单/表格)
    */
   private async openDialog(config: ActionConfig): Promise<void> {
+    // 确定组件类型和配置ID(向后兼容)
+    const componentType = config.componentType || 'form'
+    let configId = config.configId
+    if (!configId && config.formId) {
+      configId = config.formId
+      config.componentType = 'form'  // 向后兼容,自动设置
+    }
+
+    if (!configId) {
+      throw new Error('缺少配置ID: 请指定 configId 或 formId')
+    }
+
+    // 表格选择模式
+    if (componentType === 'table' && config.mode === 'select') {
+      await this.openTableSelectDialog(config, configId)
+      return
+    }
+
+    // 表单模式(新增/编辑/查看)
+    if (componentType === 'form') {
+      await this.openFormDialog(config, configId)
+      return
+    }
+
+    throw new Error(`不支持的组件类型: ${componentType}`)
+  }
+
+  /**
+   * 打开表单弹窗
+   */
+  private async openFormDialog(config: ActionConfig, configId: number): Promise<void> {
     // 构建数据URL
     let dataUrl = config.dataUrl
     if (config.mode === 'edit' && config.dataUrl) {
@@ -175,7 +228,7 @@ export class ButtonActionHandler {
       width: config.width || '600px',
       component: markRaw(FormRender),
       componentProps: {
-        configId: config.formId,
+        configId,
         mode: config.mode || 'add'
       },
       mode: config.mode || 'add',
@@ -201,13 +254,113 @@ export class ButtonActionHandler {
   }
 
   /**
-   * 打开抽屉
+   * 打开表格选择弹窗
+   */
+  private async openTableSelectDialog(config: ActionConfig, configId: number): Promise<void> {
+    await this.dialogManager.openDialog({
+      id: `dialog_select_${Date.now()}`,
+      title: config.title || '选择数据',
+      width: config.width || '800px',
+      component: markRaw(TableRender),
+      componentProps: {
+        configId,
+        mode: 'select',
+        multiple: config.multiple || false,
+        autoLoad: true
+      },
+      mode: 'select',
+      showFooter: false,  // TableRender 自己处理底部操作栏
+      onConfirm: (selectedData: any) => {
+        this.handleSelectionConfirm(config, selectedData)
+      }
+    })
+  }
+
+  /**
+   * 处理选择确认
+   */
+  private async handleSelectionConfirm(config: ActionConfig, selectedData: any): Promise<void> {
+    if (!selectedData || (Array.isArray(selectedData) && selectedData.length === 0)) {
+      ElMessage.warning('请选择数据')
+      return
+    }
+
+    // 单选或多选数据处理
+    const selection = Array.isArray(selectedData) ? selectedData : [selectedData]
+    const selectField = config.selectField || 'id'
+
+    // 提取返回值
+    const values = selection.map(item => item[selectField])
+    const result = config.multiple ? values : values[0]
+
+    // 处理回调
+    if (config.onConfirm) {
+      if (config.onConfirm.action === 'callback' && config.onConfirm.targetField) {
+        // 回填到父表单字段
+        if (this.context?.form) {
+          this.context.form[config.onConfirm.targetField] = result
+          ElMessage.success('已选择数据')
+        } else {
+          console.warn('父表单上下文不存在,无法回填数据')
+        }
+      } else if (config.onConfirm.action === 'api' && config.onConfirm.url) {
+        // 调用API
+        try {
+          await request.request({
+            url: config.onConfirm.url,
+            method: 'POST',
+            data: config.multiple ? selection : selection[0]
+          })
+          ElMessage.success('操作成功')
+          this.refreshCallback?.()
+        } catch (error: any) {
+          ElMessage.error(error.message || '操作失败')
+        }
+      }
+    }
+
+    // 关闭弹窗
+    this.dialogManager.closeDialog()
+  }
+
+  /**
+   * 打开抽屉(表单/表格)
    */
   private async openDrawer(config: ActionConfig): Promise<void> {
+    // 确定组件类型和配置ID(向后兼容)
+    const componentType = config.componentType || 'form'
+    let configId = config.configId
+    if (!configId && config.formId) {
+      configId = config.formId
+      config.componentType = 'form'
+    }
+
+    if (!configId) {
+      throw new Error('缺少配置ID: 请指定 configId 或 formId')
+    }
+
+    // 表格选择模式
+    if (componentType === 'table' && config.mode === 'select') {
+      await this.openTableSelectDrawer(config, configId)
+      return
+    }
+
+    // 表单模式
+    if (componentType === 'form') {
+      await this.openFormDrawer(config, configId)
+      return
+    }
+
+    throw new Error(`不支持的组件类型: ${componentType}`)
+  }
+
+  /**
+   * 打开表单抽屉
+   */
+  private async openFormDrawer(config: ActionConfig, configId: number): Promise<void> {
     // 构建数据URL
     let dataUrl = config.dataUrl
     if (config.mode === 'edit' && config.dataUrl) {
-      // 支持模板字符串 {{row.id}}
       dataUrl = this.evaluateTemplate(config.dataUrl)
     }
 
@@ -223,7 +376,7 @@ export class ButtonActionHandler {
       size: config.size || 'default',
       component: markRaw(FormRender),
       componentProps: {
-        configId: config.formId,
+        configId,
         mode: config.mode || 'add'
       },
       mode: config.mode || 'add',
@@ -244,6 +397,29 @@ export class ButtonActionHandler {
         if (config.successAction?.message) {
           ElMessage.success(config.successAction.message)
         }
+      }
+    })
+  }
+
+  /**
+   * 打开表格选择抽屉
+   */
+  private async openTableSelectDrawer(config: ActionConfig, configId: number): Promise<void> {
+    await this.drawerManager.openDrawer({
+      id: `drawer_select_${Date.now()}`,
+      title: config.title || '选择数据',
+      size: config.size || 'large',
+      component: markRaw(TableRender),
+      componentProps: {
+        configId,
+        mode: 'select',
+        multiple: config.multiple || false,
+        autoLoad: true
+      },
+      mode: 'select',
+      showFooter: false,
+      onConfirm: (selectedData: any) => {
+        this.handleSelectionConfirm(config, selectedData)
       }
     })
   }

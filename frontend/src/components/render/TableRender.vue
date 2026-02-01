@@ -23,7 +23,7 @@
       :empty-text="tableConfig.emptyText"
       @selection-change="handleSelectionChange"
     >
-      <el-table-column v-if="tableConfig.selection" type="selection" width="55" />
+      <el-table-column v-if="showSelection" type="selection" width="55" />
       <el-table-column v-if="tableConfig.showIndex" type="index" label="序号" width="60" />
 
       <TableColumnRender
@@ -35,7 +35,7 @@
 
       <!-- 操作列 -->
       <el-table-column
-        v-if="rowButtons.length > 0"
+        v-if="rowButtons.length > 0 && mode !== 'select'"
         label="操作"
         :width="operatingColumnWidth"
         fixed="right"
@@ -54,9 +54,20 @@
       </el-table-column>
     </el-table>
 
+    <!-- 选择模式底部操作栏 -->
+    <div v-if="mode === 'select'" class="table-select-footer">
+      <div class="select-info">
+        <el-tag type="info">已选择 {{ tableSelection.length }} 项</el-tag>
+      </div>
+      <div class="select-actions">
+        <el-button @click="handleCancel">取消</el-button>
+        <el-button type="primary" @click="handleConfirm">确定</el-button>
+      </div>
+    </div>
+
     <!-- 分页 -->
     <el-pagination
-      v-if="tableConfig.pagination"
+      v-if="tableConfig.pagination && mode !== 'select'"
       v-model:current-page="currentPage"
       v-model:page-size="pageSize"
       :page-sizes="pageSizes"
@@ -85,16 +96,22 @@ interface Props {
   configId: number
   searchFormData?: Record<string, any>
   autoLoad?: boolean
+  mode?: 'view' | 'select'  // 新增模式属性
+  multiple?: boolean  // 新增多选属性
 }
 
 interface Emits {
   (e: 'selection-change', selection: any[]): void
   (e: 'row-click', row: any): void
   (e: 'refresh'): void
+  (e: 'confirm', data: any): void  // 新增确认事件
+  (e: 'cancel'): void  // 新增取消事件
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  autoLoad: true
+  autoLoad: true,
+  mode: 'view',
+  multiple: false
 })
 
 const emit = defineEmits<Emits>()
@@ -123,9 +140,16 @@ const rowButtons = ref<ButtonConfig[]>([])
 
 // 是否显示工具栏
 const showToolbar = computed(() => {
-  return tableConfig.value.configJson
-    ? JSON.parse(tableConfig.value.configJson).showToolbar !== false
-    : true
+  return props.mode === 'select' ? false : (
+    tableConfig.value.configJson
+      ? JSON.parse(tableConfig.value.configJson).showToolbar !== false
+      : true
+  )
+})
+
+// 是否显示选择列
+const showSelection = computed(() => {
+  return props.mode === 'select' || tableConfig.value.selection
 })
 
 // 操作列宽度
@@ -250,8 +274,9 @@ const handleRowButtonClick = async (event: MouseEvent, config: ButtonConfig, row
 }
 
 // 列操作点击
-const handleColumnActionClick = (row: any, column: TableColumn) => {
-  console.log('列操作点击:', row, column)
+const handleColumnActionClick = (action: any, row: any) => {
+  console.log('列操作点击:', action, row)
+  // TODO: 根据按钮配置执行相应操作
 }
 
 // 刷新数据
@@ -268,6 +293,22 @@ const getSelectionRows = () => {
 // 清空选择
 const clearSelection = () => {
   tableRef.value?.clearSelection()
+}
+
+// 处理选择模式确认
+const handleConfirm = () => {
+  if (tableSelection.value.length === 0) {
+    ElMessage.warning('请至少选择一项数据')
+    return
+  }
+
+  const data = props.multiple ? tableSelection.value : tableSelection.value[0]
+  emit('confirm', data)
+}
+
+// 处理选择模式取消
+const handleCancel = () => {
+  emit('cancel')
 }
 
 // 监听查询表单数据变化
@@ -304,5 +345,25 @@ onMounted(() => {
   padding: 12px 16px;
   background: #fff;
   border-radius: 4px;
+}
+
+.table-select-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+
+  .select-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .select-actions {
+    display: flex;
+    gap: 8px;
+  }
 }
 </style>

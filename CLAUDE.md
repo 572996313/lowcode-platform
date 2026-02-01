@@ -101,7 +101,7 @@ mvn test             # 运行测试
 - `handler/` - MyBatis TypeHandler（如 DefaultValueTypeHandler 处理 JSON 字段）
 
 **数据库配置：**
-- 默认数据源：`mysql://localhost:3306/lowcode_platform`（用户名 root / 密码 123456）
+- 默认数据源：`mysql://localhost:3306/lowcode_platform`（用户名 root / 密码 1234）
 - MySQL 可能在 Docker 容器中，也可能是本地安装的 MySQL
 - 逻辑删除字段：`deleted`（1=删除，0=存在）
 - 主键策略：`AUTO`（数据库自增）
@@ -114,8 +114,8 @@ mvn test             # 运行测试
 - 分页插件：`PaginationInnerInterceptor`（MySQL 数据库）
 
 **数据库初始化：**
-- 初始化脚本：`docs/init.sql`
-- 迁移脚本：`docs/migration/` 目录（如 `002_add_page_publish.sql`）
+- 初始化脚本：``
+- 迁移脚本：
 
 ### 字符集和乱码问题
 
@@ -142,19 +142,19 @@ docker ps | grep mysql
 docker exec -i <容器名或ID> mysql -uroot -p<密码> --default-character-set=utf8mb4 lowcode_platform < script.sql
 
 # 示例（容器名为 wizardly_yalow）
-docker exec -i wizardly_yalow mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+docker exec -i wizardly_yalow mysql -uroot -p1234 --default-character-set=utf8mb4 lowcode_platform < script.sql
 
 # 或者在 SQL 文件开头设置字符集
-docker exec -i wizardly_yalow mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+docker exec -i wizardly_yalow mysql -uroot -p1234 --default-character-set=utf8mb4 lowcode_platform < script.sql
 ```
 
 #### 场景 2：本地 MySQL
 ```bash
 # ✅ 正确方式 - 指定字符集参数
-mysql -uroot -p123456 --default-character-set=utf8mb4 lowcode_platform < script.sql
+mysql -uroot -p1234 --default-character-set=utf8mb4 lowcode_platform < script.sql
 
 # 或在 MySQL 命令行中设置
-mysql -uroot -p123456 lowcode_platform
+mysql -uroot -p1234 lowcode_platform
 mysql> SET NAMES utf8mb4;
 mysql> SOURCE script.sql;
 ```
@@ -273,3 +273,66 @@ docker exec <容器名> mysql -uroot -p<密码> --default-character-set=utf8mb4 
    - 日志级别：com.lowcode 包为 DEBUG，com.lowcode.mapper 为 DEBUG
    - 控制台输出：使用 ANSI 彩色日志
 5. **Vue DevTools**：浏览器安装 Vue DevTools 扩展进行前端调试
+
+## 开发规范（核心）
+
+> 详细的开发规范文档请参考：`docs/DEVELOPMENT_GUIDE.md`
+
+### 路由命名规范
+- **管理页面**：PascalCase，如 `/lowcode/PageManage`、`/lowcode/FormList`
+- **设计器**：PascalCase，如 `/lowcode/PageDesigner`
+- **动态参数**：使用具体名称 `:pageId`，避免通用 `:id`
+
+**❌ 错误示例**：`/lowcode/page` → 可能被误解析为参数
+**✅ 正确示例**：`/lowcode/PageManage` → 明确的管理页面
+
+### API 路径规范
+```
+GET    /api/page/list           # 分页查询
+GET    /api/page/{id}           # 获取详情
+POST   /api/page                # 创建
+PUT    /api/page/{id}           # 更新
+DELETE /api/page/{id}           # 删除
+POST   /api/page/{id}/publish   # 自定义操作
+```
+
+### 参数验证规范
+```typescript
+// 前端：严格验证
+const pageId = Number(route.params.id)
+if (!pageId || isNaN(pageId) || pageId <= 0) {
+  throw new Error(`无效的页面ID: ${route.params.id}`)
+}
+```
+
+```java
+// 后端：参数校验
+@GetMapping("/{id}")
+public Result<PageConfig> getPage(@PathVariable Long id) {
+    if (id == null || id <= 0) {
+        return Result.fail("无效的页面ID");
+    }
+    // 业务逻辑...
+}
+```
+
+### 命名约定
+
+| 类型 | 规则 | 示例 |
+|-----|------|------|
+| Vue组件 | PascalCase | `PageManage.vue` |
+| Java类 | PascalCase | `PageConfigController` |
+| Java方法 | camelCase | `getPageList` |
+| 变量 | camelCase | `pageId` |
+| 路由(管理) | PascalCase | `/lowcode/PageManage` |
+| 路由(功能) | kebab-case | `/page/preview` |
+| API路径 | kebab-case | `/api/page-template` |
+| 数据库表 | snake_case | `low_page_config` |
+
+### 常见问题
+
+**问题**：参数 'id' 的值 'page' 无法转换为 Long 类型
+- **原因**：路由 `/lowcode/page` 被误解析为动态参数
+- **解决**：改为 `/lowcode/PageManage`（PascalCase）
+- **预防**：管理页面统一使用 PascalCase 路由
+

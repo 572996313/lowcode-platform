@@ -48,6 +48,14 @@ const buttonMap = inject<Map<number, ButtonConfig>>('buttonMap', new Map())
 
 // 计算实际的按钮配置（从缓存中获取完整配置）
 const buttonConfig = computed(() => {
+  // 如果config为空或undefined，返回默认配置
+  if (!props.config) {
+    return {
+      buttonName: '按钮',
+      buttonType: 'default'
+    } as ButtonConfig
+  }
+
   // 如果config中只有buttonId，从缓存中获取完整配置
   if ('buttonId' in props.config && props.config.buttonId) {
     const cached = buttonMap.value.get(props.config.buttonId)

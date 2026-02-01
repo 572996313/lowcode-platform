@@ -12,7 +12,7 @@ export interface DrawerConfig {
   direction?: 'rtl' | 'ltr' | 'ttb' | 'btt'
   component?: Component
   componentProps?: Record<string, any>
-  mode?: 'add' | 'edit' | 'view' | 'detail'
+  mode?: 'add' | 'edit' | 'view' | 'detail' | 'select'  // 新增 select
   dataUrl?: string
   submitUrl?: string
   submitMethod?: 'POST' | 'PUT' | 'PATCH'
@@ -20,6 +20,7 @@ export interface DrawerConfig {
   confirmText?: string
   cancelText?: string
   onSuccess?: () => void
+  onConfirm?: (data?: any) => void  // 新增
   onClose?: () => void
 }
 
@@ -53,8 +54,8 @@ export const useDrawerManager = () => {
       } finally {
         drawerLoading.value = false
       }
-    } else if (config.mode === 'add') {
-      // 新增模式，清空表单数据
+    } else if (config.mode === 'add' || config.mode === 'select') {
+      // 新增或选择模式，清空表单数据
       formData.value = {}
     }
   }
@@ -104,6 +105,17 @@ export const useDrawerManager = () => {
     }
   }
 
+  /**
+   * 处理选择确认(用于表格选择模式)
+   */
+  const handleSelectionConfirm = (selectedData: any) => {
+    const config = drawerConfig.value!
+    if (config.onConfirm) {
+      config.onConfirm(selectedData)
+    }
+    closeDrawer()
+  }
+
   return {
     drawerVisible,
     drawerConfig,
@@ -111,7 +123,8 @@ export const useDrawerManager = () => {
     formData,
     openDrawer,
     closeDrawer,
-    submitDrawer
+    submitDrawer,
+    handleSelectionConfirm
   }
 }
 
@@ -127,13 +140,28 @@ export const DrawerContainer = {
       drawerLoading,
       formData,
       closeDrawer,
-      submitDrawer
+      submitDrawer,
+      handleSelectionConfirm
     } = useDrawerManager()
 
     const formRef = ref()
+    const tableRef = ref()
 
     const handleConfirm = () => {
-      submitDrawer(formRef.value)
+      const config = drawerConfig.value
+      if (config?.mode === 'select') {
+        // 选择模式: 从 Table 获取选中数据
+        const selection = tableRef.value?.getSelectionRows?.()
+        if (selection && selection.length > 0) {
+          const data = config.componentProps?.multiple ? selection : selection[0]
+          handleSelectionConfirm(data)
+        } else {
+          ElMessage.warning('请选择数据')
+        }
+      } else {
+        // 表单模式: 提交表单
+        submitDrawer(formRef.value)
+      }
     }
 
     return () => {
@@ -169,7 +197,9 @@ export const DrawerContainer = {
             ...drawerConfig.value.componentProps,
             modelValue: formData.value,
             'onUpdate:modelValue': (val: any) => formData.value = val,
-            ref: formRef
+            ref: drawerConfig.value.mode === 'select' ? tableRef : formRef,
+            onConfirm: drawerConfig.value.mode === 'select' ? handleConfirm : undefined,
+            onCancel: drawerConfig.value.mode === 'select' ? closeDrawer : undefined
           })
         ] : undefined)
       ])

@@ -8,6 +8,9 @@
         <span class="title">表单设计器{{ formId ? ' - 编辑模式' : ' - 新建模式' }}</span>
       </div>
       <div class="header-right">
+        <el-button @click="handleLoadFromBinding">
+          <el-icon><Link /></el-icon>从字段绑定加载
+        </el-button>
         <el-button @click="handlePreview">
           <el-icon><View /></el-icon>预览
         </el-button>
@@ -234,14 +237,94 @@
         </el-tabs>
       </div>
     </div>
+
+    <!-- 从字段绑定加载对话框 -->
+    <el-dialog
+      v-model="bindingDialogVisible"
+      title="从字段绑定加载"
+      width="800px"
+      destroy-on-close
+    >
+      <el-select
+        v-model="selectedBindingTableId"
+        placeholder="请选择数据表"
+        filterable
+        style="width: 100%; margin-bottom: 16px"
+        @change="handleBindingTableChange"
+      >
+        <el-option
+          v-for="table in bindingTableList"
+          :key="table.id"
+          :label="`${table.tableName} - ${table.tableComment || '无注释'}`"
+          :value="table.id"
+        />
+      </el-select>
+
+      <el-table
+        :data="bindingFieldList"
+        v-loading="bindingLoading"
+        max-height="400"
+        @selection-change="handleBindingSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="field.fieldName" label="字段名" width="120" />
+        <el-table-column prop="field.fieldType" label="字段类型" width="100" />
+        <el-table-column label="选择模板" width="160">
+          <template #default="{ row }">
+            <el-select v-model="row.selectedTemplate" placeholder="默认配置" clearable style="width: 100%">
+              <el-option label="默认配置" :value="undefined" />
+              <el-option
+                v-for="template in row.templates"
+                :key="template.id"
+                :label="template.templateName"
+                :value="template.templateCode || template.id?.toString()"
+              />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column prop="config.widgetType" label="控件类型" width="100" />
+        <el-table-column prop="field.fieldLabel" label="显示标签">
+          <template #default="{ row }">
+            {{ row.field.fieldLabel || row.field.fieldComment || '-' }}
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="bindingDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            @click="handleConfirmLoadBinding"
+            :disabled="selectedBindingFields.length === 0"
+          >
+            加载选中 ({{ selectedBindingFields.length }})
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createForm, updateForm, getFormConfig, type FormConfig, type FormField as ApiFormField } from '@/api/form'
+import {
+  getTableList,
+  getTableFields,
+  type DbTable,
+  type DbTableField
+} from '@/api/db-table'
+import {
+  getConfigsByTableId,
+  getTemplatesByFieldId,
+  type DbFieldWidgetConfig,
+  type DbFieldWidgetTemplate
+} from '@/api/db-field-widget'
+import { getTemplateByCode, type FormTemplate as ApiFormTemplate } from '@/api/form-template'
+import { getTemplateByCode as getRegistryTemplate, formTemplateRegistry, type FormTemplateMeta } from '@/components/templates/TemplateRegistry'
 
 interface FormField {
   id: string
@@ -254,6 +337,14 @@ interface FormField {
   disabled?: boolean
   span?: number
   options?: { label: string; value: any }[]
+}
+
+// 字段绑定相关类型
+interface BindingFieldItem {
+  field: DbTableField
+  config: DbFieldWidgetConfig
+  templates: DbFieldWidgetTemplate[]
+  selectedTemplate?: string
 }
 
 // 按钮相关类型已移除 - 按钮现在从组件库选择
@@ -275,6 +366,14 @@ const formConfig = reactive({
   labelWidth: 100,
   labelPosition: 'right' as 'right' | 'left' | 'top'
 })
+
+// 字段绑定相关状态
+const bindingDialogVisible = ref(false)
+const bindingLoading = ref(false)
+const bindingTableList = ref<DbTable[]>([])
+const selectedBindingTableId = ref<number | null>(null)
+const bindingFieldList = ref<BindingFieldItem[]>([])
+const selectedBindingFields = ref<BindingFieldItem[]>([])
 
 // 移除按钮配置相关代码 - 按钮现在从组件库选择
 
@@ -479,6 +578,124 @@ const handleSave = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 从字段绑定加载
+const handleLoadFromBinding = async () => {
+  bindingDialogVisible.value = true
+  if (bindingTableList.value.length === 0) {
+    bindingLoading.value = true
+    try {
+      const result = await getTableList({ current: 1, size: 1000 })
+      bindingTableList.value = result.records
+    } catch (error) {
+      ElMessage.error('加载表列表失败')
+      console.error(error)
+    } finally {
+      bindingLoading.value = false
+    }
+  }
+}
+
+// 字段绑定表切换
+const handleBindingTableChange = async () => {
+  if (!selectedBindingTableId.value) {
+    bindingFieldList.value = []
+    return
+  }
+
+  bindingLoading.value = true
+  try {
+    const [fields, configs] = await Promise.all([
+      getTableFields(selectedBindingTableId.value),
+      getConfigsByTableId(selectedBindingTableId.value)
+    ])
+
+    // 创建配置映射
+    const configMap = new Map<number, DbFieldWidgetConfig>()
+    configs.forEach(c => {
+      if (c.fieldId) configMap.set(c.fieldId, c)
+    })
+
+    // 组合数据，只显示已配置绑定的字段，并加载每个字段的模板
+    const fieldsWithConfig = fields.filter(field => configMap.has(field.id!))
+
+    bindingFieldList.value = await Promise.all(
+      fieldsWithConfig.map(async field => {
+        const templates = await getTemplatesByFieldId(field.id!)
+        return {
+          field,
+          config: configMap.get(field.id!)!,
+          templates,
+          selectedTemplate: undefined
+        }
+      })
+    )
+
+    if (bindingFieldList.value.length === 0) {
+      ElMessage.warning('该表暂无字段绑定配置，请先在"字段-控件绑定"页面配置')
+    }
+  } catch (error) {
+    ElMessage.error('加载字段配置失败')
+    console.error(error)
+  } finally {
+    bindingLoading.value = false
+  }
+}
+
+// 字段绑定选择变化
+const handleBindingSelectionChange = (selection: BindingFieldItem[]) => {
+  selectedBindingFields.value = selection
+}
+
+// 确认加载字段绑定
+const handleConfirmLoadBinding = () => {
+  if (selectedBindingFields.value.length === 0) {
+    ElMessage.warning('请至少选择一个字段')
+    return
+  }
+
+  // 转换为表单字段
+  const newFields: FormField[] = selectedBindingFields.value.map(item => {
+    // 如果选择了模板，使用模板的配置
+    let configToUse = item.config
+
+    if (item.selectedTemplate) {
+      const template = item.templates.find(t =>
+        t.templateCode === item.selectedTemplate || t.id?.toString() === item.selectedTemplate
+      )
+      if (template) {
+        configToUse = {
+          widgetType: template.widgetType,
+          widgetConfig: template.widgetConfig
+        } as any
+      }
+    }
+
+    const widgetConfig = JSON.parse(configToUse.widgetConfig || '{}')
+
+    return {
+      id: Date.now().toString() + Math.random(),
+      fieldType: configToUse.widgetType,
+      fieldCode: item.field.fieldName,
+      label: widgetConfig.label || item.field.fieldLabel || item.field.fieldComment || item.field.fieldName,
+      placeholder: widgetConfig.placeholder,
+      defaultValue: widgetConfig.defaultValue || '',
+      required: widgetConfig.required || false,
+      disabled: widgetConfig.disabled || false,
+      span: widgetConfig.span || 12,
+      options: widgetConfig.options
+    }
+  })
+
+  // 添加到表单字段列表
+  formFields.value.push(...newFields)
+
+  ElMessage.success(`成功加载 ${newFields.length} 个字段`)
+  bindingDialogVisible.value = false
+  selectedBindingFields.value = []
+  selectedBindingTableId.value = null
+  bindingFieldList.value = []
 }
 </script>
 

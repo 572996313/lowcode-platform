@@ -11,15 +11,16 @@ export interface DialogConfig {
   width?: string
   component?: Component
   componentProps?: Record<string, any>
-  mode?: 'add' | 'edit' | 'view'
+  mode?: 'add' | 'edit' | 'view' | 'select'  // 新增 select
   dataUrl?: string
   submitUrl?: string
   submitMethod?: 'POST' | 'PUT' | 'PATCH'
-  onSuccess?: () => void
-  onClose?: () => void
   showFooter?: boolean
   confirmText?: string
   cancelText?: string
+  onSuccess?: () => void
+  onConfirm?: (data?: any) => void  // 新增,用于选择模式
+  onClose?: () => void
 }
 
 /**
@@ -54,6 +55,9 @@ export const useDialogManager = () => {
       }
     } else if (config.mode === 'add') {
       // 新增模式，清空表单数据
+      formData.value = {}
+    } else if (config.mode === 'select') {
+      // 选择模式，清空数据
       formData.value = {}
     }
   }
@@ -103,6 +107,17 @@ export const useDialogManager = () => {
     }
   }
 
+  /**
+   * 处理选择确认(用于表格选择模式)
+   */
+  const handleSelectionConfirm = (selectedData: any) => {
+    const config = dialogConfig.value!
+    if (config.onConfirm) {
+      config.onConfirm(selectedData)
+    }
+    closeDialog()
+  }
+
   return {
     dialogVisible,
     dialogConfig,
@@ -110,7 +125,8 @@ export const useDialogManager = () => {
     formData,
     openDialog,
     closeDialog,
-    submitDialog
+    submitDialog,
+    handleSelectionConfirm
   }
 }
 
@@ -126,13 +142,28 @@ export const DialogContainer = {
       dialogLoading,
       formData,
       closeDialog,
-      submitDialog
+      submitDialog,
+      handleSelectionConfirm
     } = useDialogManager()
 
     const formRef = ref()
+    const tableRef = ref()
 
     const handleConfirm = () => {
-      submitDialog(formRef.value)
+      const config = dialogConfig.value
+      if (config?.mode === 'select') {
+        // 选择模式: 从 Table 获取选中数据
+        const selection = tableRef.value?.getSelectionRows?.()
+        if (selection && selection.length > 0) {
+          const data = config.componentProps?.multiple ? selection : selection[0]
+          handleSelectionConfirm(data)
+        } else {
+          ElMessage.warning('请选择数据')
+        }
+      } else {
+        // 表单模式: 提交表单
+        submitDialog(formRef.value)
+      }
     }
 
     return () => {
@@ -166,7 +197,9 @@ export const DialogContainer = {
             ...dialogConfig.value.componentProps,
             modelValue: formData.value,
             'onUpdate:modelValue': (val: any) => formData.value = val,
-            ref: formRef
+            ref: dialogConfig.value.mode === 'select' ? tableRef : formRef,
+            onConfirm: dialogConfig.value.mode === 'select' ? handleConfirm : undefined,
+            onCancel: dialogConfig.value.mode === 'select' ? closeDialog : undefined
           })
         ] : undefined)
       ])

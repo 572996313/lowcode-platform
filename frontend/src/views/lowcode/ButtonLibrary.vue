@@ -47,6 +47,10 @@
               <span class="button-name">{{ btn.buttonName }}</span>
             </div>
             <div class="card-actions">
+              <el-button link type="success" @click="handleSyncToPages(btn)">
+                <el-icon><Connection /></el-icon>
+                同步
+              </el-button>
               <el-button link type="primary" @click="openButtonEditor(btn)">
                 <el-icon><Edit /></el-icon>
                 编辑
@@ -182,11 +186,124 @@
             placeholder="请输入标签，用逗号分隔 (如: system,create,crud)"
           />
         </el-form-item>
+
+        <el-form-item label="动作配置">
+          <el-button @click="openActionConfigDialog">
+            <el-icon><Setting /></el-icon>
+            {{ hasActionConfig ? '修改动作配置' : '配置动作' }}
+          </el-button>
+          <el-tag v-if="hasActionConfig" type="success" style="margin-left: 8px">已配置</el-tag>
+        </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 按钮动作配置对话框 -->
+    <ButtonActionConfig
+      v-model:visible="actionConfigVisible"
+      :config="actionConfigData"
+      @confirm="handleActionConfigConfirm"
+    />
+
+    <!-- 同步到页面对话框 -->
+    <el-dialog
+      v-model="syncDialogVisible"
+      title="同步模板到页面"
+      width="700px"
+    >
+      <div v-loading="loadingReferences" class="sync-dialog-content">
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 16px"
+        >
+          <template #title>
+            <div>当前模板：{{ currentSyncButton?.buttonName }}</div>
+          </template>
+        </el-alert>
+
+        <el-empty
+          v-if="!loadingReferences && referencedPages.length === 0"
+          description="暂无页面引用此模板"
+        />
+
+        <div v-else class="pages-selection">
+          <div class="selection-header">
+            <el-checkbox
+              v-model="selectAllPages"
+              :indeterminate="isIndeterminate"
+              @change="handleSelectAllPages"
+            >
+              全选（已选择 {{ selectedPageIds.length }} / {{ referencedPages.length }} 个页面）
+            </el-checkbox>
+          </div>
+
+          <el-checkbox-group v-model="selectedPageIds" class="pages-list">
+            <div
+              v-for="page in referencedPages"
+              :key="page.pageId"
+              class="page-item"
+            >
+              <el-checkbox :label="page.pageId" class="page-checkbox">
+                <div class="page-info">
+                  <div class="page-name">{{ page.pageName }}</div>
+                  <div class="page-meta">
+                    <el-tag size="small" type="info">{{ page.pageCode }}</el-tag>
+                    <span class="reference-path">路径：{{ page.referencePath }}</span>
+                    <el-tag
+                      v-if="page.isLinked"
+                      size="small"
+                      type="success"
+                    >
+                      已引用
+                    </el-tag>
+                    <el-tag
+                      v-else
+                      size="small"
+                      type="warning"
+                    >
+                      独立副本
+                    </el-tag>
+                  </div>
+                </div>
+              </el-checkbox>
+            </div>
+          </el-checkbox-group>
+        </div>
+
+        <div v-if="referencedPages.length > 0" class="sync-strategy">
+          <div class="strategy-label">同步策略：</div>
+          <el-radio-group v-model="syncStrategy">
+            <el-radio label="merge">
+              <div class="strategy-option">
+                <div class="strategy-title">合并（推荐）</div>
+                <div class="strategy-desc">保留页面自定义配置，仅更新模板基础配置</div>
+              </div>
+            </el-radio>
+            <el-radio label="replace">
+              <div class="strategy-option">
+                <div class="strategy-title">替换</div>
+                <div class="strategy-desc">清空页面自定义配置，完全使用模板配置</div>
+              </div>
+            </el-radio>
+          </el-radio-group>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="syncDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="syncing"
+          :disabled="selectedPageIds.length === 0"
+          @click="handleExecuteSync"
+        >
+          同步到 {{ selectedPageIds.length }} 个页面
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -201,10 +318,16 @@ import {
   Refresh,
   Edit,
   Delete,
+  Setting,
+  Connection,
   type FormInstance,
   type FormRules
 } from '@element-plus/icons-vue'
-import { getButtonLibrary } from '@/api/library'
+import { getButtonLibrary, getTemplateReferences, syncTemplateToPages } from '@/api/library'
+import { createButton, updateButton, deleteButton as deleteButtonApi } from '@/api/button'
+import type { TemplateReferenceResult, PageReference } from '@/types/page-v6'
+import ButtonActionConfig from '@/components/designer/ButtonActionConfig.vue'
+import type { ActionConfig } from '@/utils/buttonActionHandler'
 
 interface ButtonConfig {
   id?: number
@@ -230,6 +353,21 @@ const isEdit = ref(false)
 const formRef = ref<FormInstance>()
 const tagsInput = ref('')
 
+// 动作配置相关
+const actionConfigVisible = ref(false)
+const actionConfigData = ref<ActionConfig | undefined>(undefined)
+
+// 同步相关
+const syncDialogVisible = ref(false)
+const currentSyncButton = ref<ButtonConfig | null>(null)
+const loadingReferences = ref(false)
+const referencedPages = ref<PageReference[]>([])
+const selectedPageIds = ref<number[]>([])
+const selectAllPages = ref(false)
+const isIndeterminate = ref(false)
+const syncStrategy = ref<'merge' | 'replace'>('merge')
+const syncing = ref(false)
+
 const formData = ref<ButtonConfig>({
   buttonName: '',
   buttonCode: '',
@@ -247,6 +385,11 @@ const formRules: FormRules = {
   actionType: [{ required: true, message: '请选择动作类型', trigger: 'change' }],
   position: [{ required: true, message: '请选择位置', trigger: 'change' }]
 }
+
+// 是否已配置动作
+const hasActionConfig = computed(() => {
+  return formData.value.actionConfig && formData.value.actionConfig !== '{}'
+})
 
 // 过滤后的按钮列表
 const filteredButtons = computed(() => {
@@ -313,6 +456,17 @@ const openButtonEditor = (btn?: ButtonConfig) => {
     isEdit.value = true
     formData.value = { ...btn }
     tagsInput.value = parseTags(btn.componentTags).join(',')
+
+    // 解析动作配置
+    if (btn.actionConfig) {
+      try {
+        actionConfigData.value = JSON.parse(btn.actionConfig)
+      } catch {
+        actionConfigData.value = undefined
+      }
+    } else {
+      actionConfigData.value = undefined
+    }
   } else {
     isEdit.value = false
     resetForm()
@@ -320,8 +474,24 @@ const openButtonEditor = (btn?: ButtonConfig) => {
   dialogVisible.value = true
 }
 
+// 打开动作配置对话框
+const openActionConfigDialog = () => {
+  actionConfigVisible.value = true
+}
+
+// 动作配置确认
+const handleActionConfigConfirm = (config: ActionConfig) => {
+  actionConfigData.value = config
+  // 将配置保存到 formData
+  formData.value.actionConfig = JSON.stringify(config)
+  ElMessage.success('动作配置已保存')
+}
+
 // 重置表单
 const resetForm = () => {
+  // 先重置表单字段和验证状态
+  formRef.value?.resetFields()
+  // 然后设置默认值
   formData.value = {
     buttonName: '',
     buttonCode: '',
@@ -331,35 +501,46 @@ const resetForm = () => {
     componentCategory: activeLibrary.value
   }
   tagsInput.value = ''
-  formRef.value?.resetFields()
+  actionConfigData.value = undefined
 }
 
 // 提交表单
 const handleSubmit = async () => {
-  if (!formRef.value) return
+  if (!formRef.value) {
+    ElMessage.error('表单未初始化')
+    return
+  }
 
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        // 将标签输入转换为 JSON 数组
-        const tags = tagsInput.value
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter((tag) => tag)
-        formData.value.componentTags = JSON.stringify(tags)
+  try {
+    await formRef.value.validate()
+  } catch (error) {
+    ElMessage.warning('请检查表单填写是否完整')
+    return
+  }
 
-        // TODO: 调用保存 API
-        // await saveButtonConfig(formData.value)
+  try {
+    // 将标签输入转换为 JSON 数组
+    const tags = tagsInput.value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag)
+    formData.value.componentTags = JSON.stringify(tags)
 
-        ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-        dialogVisible.value = false
-        loadButtons()
-      } catch (error) {
-        ElMessage.error('保存失败')
-        console.error(error)
-      }
+    // 调用保存 API
+    if (isEdit.value && formData.value.id) {
+      await updateButton(formData.value.id, formData.value)
+      ElMessage.success('更新成功')
+    } else {
+      await createButton(formData.value)
+      ElMessage.success('创建成功')
     }
-  })
+
+    dialogVisible.value = false
+    loadButtons()
+  } catch (error: any) {
+    ElMessage.error(error.message || '保存失败')
+    console.error(error)
+  }
 }
 
 // 删除按钮
@@ -369,9 +550,7 @@ const deleteButton = async (id: number) => {
       type: 'warning'
     })
 
-    // TODO: 调用删除 API
-    // await deleteButtonConfig(id)
-
+    await deleteButtonApi(id)
     ElMessage.success('删除成功')
     loadButtons()
   } catch (error) {
@@ -379,6 +558,120 @@ const deleteButton = async (id: number) => {
       ElMessage.error('删除失败')
       console.error(error)
     }
+  }
+}
+
+// 同步到页面
+const handleSyncToPages = async (btn: ButtonConfig) => {
+  if (!btn.id) {
+    ElMessage.warning('按钮ID不存在')
+    return
+  }
+
+  currentSyncButton.value = btn
+  syncDialogVisible.value = true
+  selectedPageIds.value = []
+  selectAllPages.value = false
+  isIndeterminate.value = false
+
+  await loadReferencedPages(btn.id)
+}
+
+// 加载引用的页面列表
+const loadReferencedPages = async (templateId: number) => {
+  loadingReferences.value = true
+  try {
+    const result: TemplateReferenceResult = await getTemplateReferences('button', templateId)
+    referencedPages.value = result.pages || []
+
+    // 默认只选择已引用的页面
+    selectedPageIds.value = referencedPages.value
+      .filter(p => p.isLinked)
+      .map(p => p.pageId)
+
+    updateSelectAllState()
+  } catch (error: any) {
+    ElMessage.error('加载引用页面失败: ' + (error.message || '未知错误'))
+    referencedPages.value = []
+  } finally {
+    loadingReferences.value = false
+  }
+}
+
+// 全选/取消全选
+const handleSelectAllPages = (checked: boolean) => {
+  selectedPageIds.value = checked ? referencedPages.value.map(p => p.pageId) : []
+  isIndeterminate.value = false
+}
+
+// 更新全选状态
+const updateSelectAllState = () => {
+  const totalCount = referencedPages.value.length
+  const selectedCount = selectedPageIds.value.length
+
+  selectAllPages.value = selectedCount === totalCount && totalCount > 0
+  isIndeterminate.value = selectedCount > 0 && selectedCount < totalCount
+}
+
+// 监听 selectedPageIds 变化，更新全选状态
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const updateSelectState = computed(() => {
+  updateSelectAllState()
+  return selectedPageIds.value.length
+})
+
+// 执行同步
+const handleExecuteSync = async () => {
+  if (selectedPageIds.value.length === 0) {
+    ElMessage.warning('请选择要同步的页面')
+    return
+  }
+
+  if (!currentSyncButton.value?.id) {
+    ElMessage.warning('按钮ID不存在')
+    return
+  }
+
+  // 确认同步
+  const strategyText = syncStrategy.value === 'merge' ? '合并（保留自定义配置）' : '替换（清空自定义配置）'
+  try {
+    await ElMessageBox.confirm(
+      `确定要同步到 ${selectedPageIds.value.length} 个页面吗？\n同步策略：${strategyText}`,
+      '确认同步',
+      {
+        type: 'warning',
+        confirmButtonText: '确认同步',
+        cancelButtonText: '取消'
+      }
+    )
+  } catch {
+    return
+  }
+
+  syncing.value = true
+  try {
+    const result = await syncTemplateToPages(
+      'button',
+      currentSyncButton.value.id,
+      selectedPageIds.value,
+      syncStrategy.value
+    )
+
+    if (result.failedCount === 0) {
+      ElMessage.success(`同步成功！已同步到 ${result.successCount} 个页面`)
+    } else {
+      ElMessage.warning(`同步完成，成功 ${result.successCount} 个，失败 ${result.failedCount} 个`)
+      if (result.errors.length > 0) {
+        console.error('同步错误详情:', result.errors)
+      }
+    }
+
+    syncDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error('同步失败: ' + (error.message || '未知错误'))
+    console.error(error)
+  } finally {
+    syncing.value = false
   }
 }
 
@@ -462,6 +755,122 @@ onMounted(() => {
 
         .tag-item {
           margin: 0;
+        }
+      }
+    }
+  }
+}
+
+// 同步对话框样式
+.sync-dialog-content {
+  .pages-selection {
+    .selection-header {
+      padding: 12px;
+      background: #f5f7fa;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+
+    .pages-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 8px;
+
+      .page-item {
+        .page-checkbox {
+          width: 100%;
+          margin: 0;
+
+          :deep(.el-checkbox__label) {
+            width: 100%;
+            padding-left: 8px;
+          }
+        }
+
+        .page-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+
+          .page-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #303133;
+          }
+
+          .page-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+
+            .reference-path {
+              color: #909399;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .sync-strategy {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f5f7fa;
+    border-radius: 4px;
+
+    .strategy-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #303133;
+      margin-bottom: 12px;
+    }
+
+    .el-radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .el-radio {
+        margin: 0;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #e4e7ed;
+        border-radius: 4px;
+        transition: all 0.3s;
+
+        &:hover {
+          border-color: #409eff;
+          box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+        }
+
+        &.is-checked {
+          border-color: #409eff;
+          background: #ecf5ff;
+        }
+
+        :deep(.el-radio__label) {
+          width: 100%;
+        }
+
+        .strategy-option {
+          margin-left: 8px;
+
+          .strategy-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #303133;
+          }
+
+          .strategy-desc {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
+          }
         }
       }
     }

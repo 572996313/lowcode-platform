@@ -75,9 +75,9 @@ const stats = ref([
 ])
 
 const quickLinks = ref([
-  { title: '页面管理', desc: '管理系统页面配置', icon: 'Document', color: '#409eff', path: '/lowcode/page' },
-  { title: '表单管理', desc: '管理系统表单配置', icon: 'Document', color: '#67c23a', path: '/lowcode/form/list' },
-  { title: '表格管理', desc: '管理系统表格配置', icon: 'Grid', color: '#e6a23c', path: '/lowcode/table/list' }
+  { title: '页面管理', desc: '管理系统页面配置', icon: 'Document', color: '#409eff', path: '/lowcode/PageManage' },
+  { title: '表单管理', desc: '管理系统表单配置', icon: 'Document', color: '#67c23a', path: '/lowcode/FormList' },
+  { title: '表格管理', desc: '管理系统表格配置', icon: 'Grid', color: '#e6a23c', path: '/lowcode/TableList' }
 ])
 </script>
 
