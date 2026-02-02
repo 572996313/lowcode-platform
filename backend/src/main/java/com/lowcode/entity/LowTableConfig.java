@@ -36,6 +36,16 @@ public class LowTableConfig implements Serializable {
     private String tableCode;
 
     /**
+     * 关联数据库表ID（关联db_table.id）
+     */
+    private Long sourceTableId;
+
+    /**
+     * 样式模板ID（关联table_style_template.id）
+     */
+    private Long styleTemplateId;
+
+    /**
      * 组件分类(common=通用组件库, business=业务组件库)
      */
     private String componentCategory;

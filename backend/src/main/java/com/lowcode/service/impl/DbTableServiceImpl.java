@@ -44,14 +44,30 @@ public class DbTableServiceImpl extends ServiceImpl<DbTableMapper, DbTable> impl
         String tableName = params.get("tableName") != null ? params.get("tableName").toString() : null;
         String tableType = params.get("tableType") != null ? params.get("tableType").toString() : null;
         Integer syncStatus = params.get("syncStatus") != null ? Integer.parseInt(params.get("syncStatus").toString()) : null;
+        // 分组过滤：null=未分组，具体ID=指定分组，不传=全部
+        String groupIdStr = params.get("groupId") != null ? params.get("groupId").toString() : null;
 
         Page<DbTable> page = new Page<>(current, size);
 
         LambdaQueryWrapper<DbTable> wrapper = Wrappers.lambdaQuery();
         wrapper.like(StrUtil.isNotBlank(tableName), DbTable::getTableName, tableName)
                .eq(StrUtil.isNotBlank(tableType), DbTable::getTableType, tableType)
-               .eq(syncStatus != null, DbTable::getSyncStatus, syncStatus)
-               .orderByDesc(DbTable::getUpdateTime);
+               .eq(syncStatus != null, DbTable::getSyncStatus, syncStatus);
+
+        // 处理分组过滤
+        if (groupIdStr != null) {
+            if ("null".equals(groupIdStr) || groupIdStr.isEmpty()) {
+                // 未分组
+                wrapper.isNull(DbTable::getGroupId);
+            } else {
+                // 指定分组
+                Long groupId = Long.parseLong(groupIdStr);
+                wrapper.eq(DbTable::getGroupId, groupId);
+            }
+        }
+        // 如果 groupIdStr 为 null，则不添加分组过滤条件，返回全部
+
+        wrapper.orderByDesc(DbTable::getUpdateTime);
 
         Page<DbTable> result = page(page, wrapper);
 
@@ -358,5 +374,35 @@ public class DbTableServiceImpl extends ServiceImpl<DbTableMapper, DbTable> impl
         removeById(id);
 
         log.info("删除库表成功, id: {}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void setTableGroup(Long tableId, Long groupId) {
+        DbTable existTable = getById(tableId);
+        if (existTable == null) {
+            throw new BusinessException("库表不存在");
+        }
+
+        DbTable updateTable = new DbTable();
+        updateTable.setId(tableId);
+        updateTable.setGroupId(groupId);
+        updateById(updateTable);
+
+        log.info("设置库表分组成功, tableId: {}, groupId: {}", tableId, groupId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchSetTableGroup(List<Long> tableIds, Long groupId) {
+        if (CollUtil.isEmpty(tableIds)) {
+            return;
+        }
+
+        update(Wrappers.lambdaUpdate(DbTable.class)
+                .in(DbTable::getId, tableIds)
+                .set(DbTable::getGroupId, groupId));
+
+        log.info("批量设置库表分组成功, tableIds: {}, groupId: {}", tableIds, groupId);
     }
 }

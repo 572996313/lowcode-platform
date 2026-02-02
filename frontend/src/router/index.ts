@@ -21,86 +21,12 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/home/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
       },
-      // V6 版本 - 页面管理
-      {
-        path: 'lowcode/PageManage',
-        name: 'PageManage',
-        component: () => import('@/views/lowcode-v6/PageManageV6.vue'),
-        meta: { title: '页面管理', icon: 'Document' }
-      },
-      {
-        path: 'lowcode/PageDesigner',
-        name: 'PageDesigner',
-        component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
-        meta: { title: '页面设计器' }
-      },
-      {
-        path: 'lowcode/PageDesigner/:id',
-        name: 'PageDesignerEdit',
-        component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
-        meta: { title: '编辑页面' }
-      },
-      // 保留的其他设计器
-      {
-        path: 'lowcode/FormDesigner',
-        name: 'FormDesigner',
-        component: () => import('@/views/lowcode/FormDesigner.vue'),
-        meta: { title: '表单设计器' }
-      },
-      {
-        path: 'lowcode/TableDesigner',
-        name: 'TableDesigner',
-        component: () => import('@/views/lowcode/TableDesigner.vue'),
-        meta: { title: '表格设计器' }
-      },
-      {
-        path: 'lowcode/ButtonLibrary',
-        name: 'ButtonLibrary',
-        component: () => import('@/views/lowcode/ButtonLibrary.vue'),
-        meta: { title: '按钮管理' }
-      },
-      {
-        path: 'lowcode/TemplateManage',
-        name: 'TemplateManage',
-        component: () => import('@/views/lowcode/TemplateManage.vue'),
-        meta: { title: '模板管理', icon: 'Tickets' }
-      },
-      {
-        path: 'lowcode/DbTableManage',
-        name: 'DbTableManage',
-        component: () => import('@/views/lowcode/DbTableList.vue'),
-        meta: { title: '库表管理', icon: 'Database' }
-      },
-      {
-        path: 'lowcode/FieldWidgetBinding',
-        name: 'FieldWidgetBinding',
-        component: () => import('@/views/lowcode/FieldWidgetBinding.vue'),
-        meta: { title: '字段-控件绑定', icon: 'Link' }
-      },
-      {
-        path: 'lowcode/DropdownManage',
-        name: 'DropdownManage',
-        component: () => import('@/views/lowcode/DropdownManage.vue'),
-        meta: { title: '下拉管理', icon: 'ArrowDown' }
-      },
-      {
-        path: 'lowcode/FormTemplateManage',
-        name: 'FormTemplateManage',
-        component: () => import('@/views/lowcode/FormTemplateManage.vue'),
-        meta: { title: '表单模板管理', icon: 'Tickets' }
-      },
-      {
-        path: 'system/DictManage',
-        name: 'DictManage',
-        component: () => import('@/views/system/DictManage.vue'),
-        meta: { title: '字典管理', icon: 'List' }
-      },
-      // 页面预览（V6 运行时）
+      // 页面预览（V6 运行时 - 不显示在菜单中）
       {
         path: 'page/preview/:id',
         name: 'PagePreview',
         component: () => import('@/views/lowcode-v6/PageRenderV6.vue'),
-        meta: { title: '页面预览' }
+        meta: { title: '页面预览', hideInMenu: true }
       }
     ]
   }

@@ -60,12 +60,85 @@
 
       <!-- 中间设计区域 -->
       <div class="design-panel">
-        <div class="panel-title">设计区域</div>
-        <div
-          class="design-area"
-          @dragover.prevent
-          @drop="handleDrop"
-        >
+        <div class="panel-title">
+          <span v-if="currentTemplate">{{ currentTemplate.templateName }}</span>
+          <span v-else>设计区域</span>
+        </div>
+
+        <!-- 基于 Template 的 Slot 树形结构 -->
+        <div v-if="currentTemplate" class="slot-tree-container">
+          <div
+            v-for="slot in templateSlots"
+            :key="slot.id"
+            class="slot-node"
+            :class="{ 'slot-active': activeSlotId === slot.id }"
+            @click="selectSlot(slot.id)"
+          >
+            <!-- Slot 头部 -->
+            <div class="slot-header" @click.stop="toggleSlot(slot.id)">
+              <el-icon class="expand-icon" :class="{ 'is-expanded': expandedSlots.has(slot.id) }">
+                <ArrowRight />
+              </el-icon>
+              <span class="slot-name">[{{ slot.id }}] {{ slot.label }}</span>
+              <span class="field-count">({{ getSlotFieldCount(slot.id) }})</span>
+            </div>
+
+            <!-- Slot 内容区域 -->
+            <div v-show="expandedSlots.has(slot.id)" class="slot-content">
+              <!-- 字段列表 -->
+              <div
+                v-for="(field, index) in slotFields[slot.id]"
+                :key="field.id"
+                class="field-item"
+                :class="{ 'field-active': selectedField?.id === field.id }"
+                @click.stop="selectField(field)"
+              >
+                <div class="field-info">
+                  <el-icon class="field-icon">
+                    <component :is="getFieldIcon(field.fieldType)" />
+                  </el-icon>
+                  <span class="field-label">{{ field.label }}</span>
+                  <span class="field-code">{{ field.fieldCode }}</span>
+                </div>
+                <div class="field-actions">
+                  <el-icon @click.stop="moveFieldInSlot(slot.id, index, 'up')" v-if="index > 0" title="上移">
+                    <Top />
+                  </el-icon>
+                  <el-icon
+                    @click.stop="moveFieldInSlot(slot.id, index, 'down')"
+                    v-if="index < (slotFields[slot.id]?.length || 0) - 1"
+                    title="下移"
+                  >
+                    <Bottom />
+                  </el-icon>
+                  <el-icon @click.stop="removeFieldFromSlot(slot.id, field.id)" title="删除">
+                    <Delete />
+                  </el-icon>
+                </div>
+              </div>
+
+              <!-- 拖放区域 -->
+              <div
+                class="drop-zone"
+                :class="{ 'drop-zone-active': activeSlotId === slot.id }"
+                @dragover.prevent
+                @drop="handleDropToSlot($event, slot.id)"
+              >
+                <el-icon class="drop-icon"><Plus /></el-icon>
+                <span class="drop-hint">拖拽组件到此处</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 空状态 -->
+          <div v-if="templateSlots.length === 0" class="empty-slots">
+            <el-icon :size="48"><Warning /></el-icon>
+            <p>当前模板没有定义槽位</p>
+          </div>
+        </div>
+
+        <!-- 兼容旧版：没有模板时显示通用表单预览 -->
+        <div v-else class="design-area">
           <el-form
             v-if="formFields.length > 0"
             :label-width="formConfig.labelWidth + 'px'"
@@ -324,7 +397,14 @@ import {
   type DbFieldWidgetTemplate
 } from '@/api/db-field-widget'
 import { getTemplateByCode, type FormTemplate as ApiFormTemplate } from '@/api/form-template'
-import { getTemplateByCode as getRegistryTemplate, formTemplateRegistry, type FormTemplateMeta } from '@/components/templates/TemplateRegistry'
+import {
+  getTemplateByCode as getRegistryTemplate,
+  getTemplateSlots,
+  getTemplateMeta,
+  formTemplateRegistry,
+  type FormTemplateMeta,
+  type FormSlotMeta
+} from '@/components/templates/TemplateRegistry'
 
 interface FormField {
   id: string
@@ -336,6 +416,8 @@ interface FormField {
   required?: boolean
   disabled?: boolean
   span?: number
+  slotId?: string  // 所属槽位ID
+  sortOrder?: number
   options?: { label: string; value: any }[]
 }
 
@@ -352,11 +434,19 @@ interface BindingFieldItem {
 const route = useRoute()
 const router = useRouter()
 const formId = ref<number | null>(route.query.id ? Number(route.query.id) : null)
+const templateCode = ref<string>(route.query.template as string || '')
 
 const activeTab = ref('field')
 const selectedField = ref<FormField | null>(null)
-const formFields = ref<FormField[]>([])
+const formFields = ref<FormField[]>([])  // 兼容旧代码，实际使用 slotFields
 const loading = ref(false)
+
+// 新增：模板相关状态
+const currentTemplate = ref<FormTemplateMeta | null>(null)
+const templateSlots = ref<FormSlotMeta[]>([])
+const slotFields = ref<Record<string, FormField[]>>({})
+const expandedSlots = ref<Set<string>>(new Set())
+const activeSlotId = ref<string | null>(null)  // 当前选中的槽位（用于拖放目标）
 
 const formConfig = reactive({
   formName: '',
@@ -364,7 +454,8 @@ const formConfig = reactive({
   componentCategory: 'business' as 'common' | 'business',
   componentTags: '' as string,
   labelWidth: 100,
-  labelPosition: 'right' as 'right' | 'left' | 'top'
+  labelPosition: 'right' as 'right' | 'left' | 'top',
+  templateCode: templateCode.value  // 记录当前使用的模板
 })
 
 // 字段绑定相关状态
@@ -393,8 +484,31 @@ const loadFormConfig = async () => {
     formConfig.labelWidth = data.labelWidth || 100
     formConfig.labelPosition = (data.labelPosition || 'right') as 'right' | 'left' | 'top'
 
-    // 加载表单字段
+    // 获取模板编码
+    const tmplCode = data.templateCode || templateCode.value
+    formConfig.templateCode = tmplCode
+    templateCode.value = tmplCode
+
+    // 加载模板定义
+    if (tmplCode) {
+      const templateMeta = getTemplateMeta(tmplCode)
+      if (templateMeta) {
+        currentTemplate.value = templateMeta
+        templateSlots.value = templateMeta.fieldSlots
+        // 初始化 slot 字段数组
+        templateMeta.fieldSlots.forEach(slot => {
+          slotFields.value[slot.id] = []
+        })
+        // 默认展开第一个 slot
+        if (templateMeta.fieldSlots.length > 0) {
+          expandedSlots.value.add(templateMeta.fieldSlots[0].id)
+        }
+      }
+    }
+
+    // 加载表单字段（按 slot 分组）
     if (data.fields && data.fields.length > 0) {
+      // 先填充到 formFields（兼容旧代码）
       formFields.value = data.fields.map((field: ApiFormField) => ({
         id: field.id?.toString() || Date.now().toString(),
         fieldType: field.fieldType,
@@ -405,11 +519,19 @@ const loadFormConfig = async () => {
         required: field.required,
         disabled: field.disabled,
         span: field.span || 12,
+        slotId: field.slotId || undefined,
         options: field.optionsJson ? JSON.parse(field.optionsJson) : undefined
       }))
-    }
 
-    // 按钮配置已从组件库选择，不再在表单设计器中配置
+      // 按 slot 分组
+      formFields.value.forEach(field => {
+        const slotId = field.slotId || 'default'
+        if (!slotFields.value[slotId]) {
+          slotFields.value[slotId] = []
+        }
+        slotFields.value[slotId].push(field)
+      })
+    }
 
     ElMessage.success('加载表单配置成功')
   } catch (error) {
@@ -421,9 +543,27 @@ const loadFormConfig = async () => {
 }
 
 // 组件挂载时加载数据
-onMounted(() => {
+onMounted(async () => {
+  // 如果有模板编码，先加载模板定义
+  if (templateCode.value) {
+    const templateMeta = getTemplateMeta(templateCode.value)
+    if (templateMeta) {
+      currentTemplate.value = templateMeta
+      templateSlots.value = templateMeta.fieldSlots
+      // 初始化每个 slot 的字段数组
+      templateMeta.fieldSlots.forEach(slot => {
+        slotFields.value[slot.id] = []
+      })
+      // 默认展开第一个 slot
+      if (templateMeta.fieldSlots.length > 0) {
+        expandedSlots.value.add(templateMeta.fieldSlots[0].id)
+      }
+    }
+  }
+
+  // 如果是编辑模式，加载表单配置
   if (formId.value) {
-    loadFormConfig()
+    await loadFormConfig()
   }
 })
 
@@ -447,11 +587,37 @@ const advancedComponents = [
 
 let dragComponent: any = null
 
+// ============ Slot 相关操作 ============
+// 切换 slot 展开状态
+const toggleSlot = (slotId: string) => {
+  if (expandedSlots.value.has(slotId)) {
+    expandedSlots.value.delete(slotId)
+  } else {
+    expandedSlots.value.add(slotId)
+  }
+}
+
+// 选择 slot（激活拖放目标）
+const selectSlot = (slotId: string) => {
+  activeSlotId.value = slotId
+  // 同时展开该 slot
+  expandedSlots.value.add(slotId)
+}
+
+// 获取 slot 中的字段数量
+const getSlotFieldCount = (slotId: string) => {
+  return slotFields.value[slotId]?.length || 0
+}
+
+// ============ 组件拖放操作 ============
 const handleDragStart = (e: DragEvent, component: any) => {
   dragComponent = component
 }
 
-const handleDrop = () => {
+// 处理拖放到指定 slot
+const handleDropToSlot = (e: DragEvent, slotId: string) => {
+  e.preventDefault()
+  e.stopPropagation()
   if (!dragComponent) return
 
   const newField: FormField = {
@@ -464,6 +630,7 @@ const handleDrop = () => {
     required: false,
     disabled: false,
     span: 12,
+    slotId: slotId,  // 记录所属 slot
     options: ['select', 'radio', 'checkbox'].includes(dragComponent.type)
       ? [
           { label: '选项1', value: '1' },
@@ -472,19 +639,110 @@ const handleDrop = () => {
       : undefined
   }
 
+  if (!slotFields.value[slotId]) {
+    slotFields.value[slotId] = []
+  }
+  slotFields.value[slotId].push(newField)
+
+  // 同步到 formFields（兼容旧代码）
   formFields.value.push(newField)
+
   selectedField.value = newField
+  activeTab.value = 'field'
   dragComponent = null
+}
+
+// 移除 slot 中的字段
+const removeFieldFromSlot = (slotId: string, fieldId: string) => {
+  const fields = slotFields.value[slotId]
+  if (!fields) return
+
+  const index = fields.findIndex(f => f.id === fieldId)
+  if (index > -1) {
+    fields.splice(index, 1)
+  }
+
+  // 同步从 formFields 中移除
+  const formIndex = formFields.value.findIndex(f => f.id === fieldId)
+  if (formIndex > -1) {
+    formFields.value.splice(formIndex, 1)
+  }
+
+  if (selectedField.value?.id === fieldId) {
+    selectedField.value = null
+  }
+}
+
+// 在 slot 中移动字段位置
+const moveFieldInSlot = (slotId: string, index: number, direction: 'up' | 'down') => {
+  const fields = slotFields.value[slotId]
+  if (!fields) return
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  if (targetIndex < 0 || targetIndex >= fields.length) return
+
+  const temp = fields[index]
+  fields[index] = fields[targetIndex]
+  fields[targetIndex] = temp
+}
+
+// 旧版拖放（兼容没有模板的情况）
+const handleDrop = () => {
+  if (!dragComponent) return
+
+  // 如果有模板且有当前选中的 slot，拖放到该 slot
+  if (currentTemplate.value && activeSlotId.value) {
+    handleDropToSlot(new DragEvent('drop'), activeSlotId.value)
+    return
+  }
+
+  // 否则使用默认行为（拖放到第一个 slot 或默认位置）
+  const targetSlotId = currentTemplate.value?.fieldSlots[0]?.id || 'default'
+  handleDropToSlot(new DragEvent('drop'), targetSlotId)
+}
+
+// 根据字段类型获取图标
+const getFieldIcon = (fieldType: string) => {
+  const iconMap: Record<string, string> = {
+    input: 'Edit',
+    textarea: 'Document',
+    select: 'ArrowDown',
+    radio: 'CircleCheck',
+    checkbox: 'Check',
+    switch: 'Switch',
+    date: 'Calendar',
+    datetime: 'Timer',
+    upload: 'Upload',
+    cascader: 'Share'
+  }
+  return iconMap[fieldType] || 'Edit'
 }
 
 const selectField = (field: FormField) => {
   selectedField.value = field
   activeTab.value = 'field'
+  // 如果字段有 slotId，选中该 slot
+  if (field.slotId) {
+    activeSlotId.value = field.slotId
+  }
 }
 
 const removeField = (index: number) => {
+  const field = formFields.value[index]
+  if (!field) return
+
+  // 从 slot 中移除
+  if (field.slotId && slotFields.value[field.slotId]) {
+    const slotIndex = slotFields.value[field.slotId].findIndex(f => f.id === field.id)
+    if (slotIndex > -1) {
+      slotFields.value[field.slotId].splice(slotIndex, 1)
+    }
+  }
+
+  // 从 formFields 中移除
   formFields.value.splice(index, 1)
-  if (selectedField.value?.id === formFields.value[index]?.id) {
+
+  if (selectedField.value?.id === field.id) {
     selectedField.value = null
   }
 }
@@ -494,6 +752,11 @@ const moveUp = (index: number) => {
     const temp = formFields.value[index]
     formFields.value[index] = formFields.value[index - 1]
     formFields.value[index - 1] = temp
+
+    // 同时更新 slot 中的顺序
+    if (temp.slotId) {
+      moveFieldInSlot(temp.slotId, index, 'up')
+    }
   }
 }
 
@@ -502,6 +765,11 @@ const moveDown = (index: number) => {
     const temp = formFields.value[index]
     formFields.value[index] = formFields.value[index + 1]
     formFields.value[index + 1] = temp
+
+    // 同时更新 slot 中的顺序
+    if (temp.slotId) {
+      moveFieldInSlot(temp.slotId, index, 'down')
+    }
   }
 }
 
@@ -524,37 +792,53 @@ const handleSave = async () => {
     ElMessage.warning('请输入表单编码')
     return
   }
-  if (formFields.value.length === 0) {
+
+  // 计算所有字段总数（包括所有 slot 中的字段）
+  const totalFields = formFields.value.length
+  if (totalFields === 0) {
     ElMessage.warning('请添加至少一个字段')
     return
   }
 
   loading.value = true
   try {
-    // 构建保存数据
+    // 构建保存数据 - 扁平化所有 slot 的字段
+    const allFields: ApiFormField[] = []
+    let globalSortOrder = 0
+
+    // 按顺序遍历每个 slot，收集字段
+    templateSlots.value.forEach(slot => {
+      const fields = slotFields.value[slot.id] || []
+      fields.forEach((field) => {
+        allFields.push({
+          fieldName: field.label,
+          fieldCode: field.fieldCode,
+          fieldType: field.fieldType,
+          label: field.label,
+          placeholder: field.placeholder,
+          defaultValue: field.defaultValue,
+          required: field.required || false,
+          disabled: field.disabled || false,
+          visible: true,
+          sortOrder: globalSortOrder++,
+          span: field.span || 12,
+          slotId: field.slotId || slot.id,  // 保存 slot 关联
+          optionsJson: field.options ? JSON.stringify(field.options) : undefined
+        })
+      })
+    })
+
     const saveData: FormConfig = {
       formName: formConfig.formName,
       formCode: formConfig.formCode,
+      templateCode: formConfig.templateCode,  // 保存模板编码
       componentCategory: formConfig.componentCategory,
       componentTags: formConfig.componentTags,
       labelWidth: formConfig.labelWidth,
       labelPosition: formConfig.labelPosition,
       layoutType: 'grid',
       status: true,
-      fields: formFields.value.map((field, index) => ({
-        fieldName: field.label,
-        fieldCode: field.fieldCode,
-        fieldType: field.fieldType,
-        label: field.label,
-        placeholder: field.placeholder,
-        defaultValue: field.defaultValue,
-        required: field.required || false,
-        disabled: field.disabled || false,
-        visible: true,
-        sortOrder: index,
-        span: field.span || 12,
-        optionsJson: field.options ? JSON.stringify(field.options) : undefined
-      }))
+      fields: allFields
     }
 
     if (formId.value) {
@@ -570,8 +854,6 @@ const handleSave = async () => {
       // 更新路由参数,避免重复创建
       router.replace({ query: { id: id.toString() } })
     }
-
-    // 按钮配置已从组件库选择，不再在保存时处理
   } catch (error: any) {
     ElMessage.error(error.message || '保存失败')
     console.error(error)
@@ -787,6 +1069,179 @@ const handleConfirmLoadBinding = () => {
       flex-direction: column;
       background-color: #fff;
       margin: 0 1px;
+
+      // Slot 树形容器
+      .slot-tree-container {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        background-color: #f9fafc;
+
+        .slot-node {
+          margin-bottom: 12px;
+          background-color: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 6px;
+          overflow: hidden;
+          transition: all 0.2s;
+
+          &.slot-active {
+            border-color: #409eff;
+            box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+          }
+
+          .slot-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s;
+
+            &:hover {
+              background-color: #f5f7fa;
+            }
+
+            .expand-icon {
+              margin-right: 6px;
+              font-size: 12px;
+              color: #909399;
+              transition: transform 0.2s;
+
+              &.is-expanded {
+                transform: rotate(90deg);
+              }
+            }
+
+            .slot-name {
+              flex: 1;
+              font-size: 13px;
+              font-weight: 500;
+              color: #303133;
+            }
+
+            .field-count {
+              font-size: 12px;
+              color: #909399;
+            }
+          }
+
+          .slot-content {
+            padding: 8px;
+            background-color: #fafafa;
+
+            .field-item {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 8px 10px;
+              margin-bottom: 6px;
+              background-color: #fff;
+              border: 1px solid #e6e6e6;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: all 0.2s;
+
+              &:hover {
+                border-color: #409eff;
+              }
+
+              &.field-active {
+                border-color: #409eff;
+                background-color: #ecf5ff;
+              }
+
+              .field-info {
+                display: flex;
+                align-items: center;
+                flex: 1;
+                min-width: 0;
+
+                .field-icon {
+                  margin-right: 8px;
+                  color: #409eff;
+                  font-size: 16px;
+                }
+
+                .field-label {
+                  font-size: 13px;
+                  color: #303133;
+                  margin-right: 8px;
+                }
+
+                .field-code {
+                  font-size: 11px;
+                  color: #909399;
+                }
+              }
+
+              .field-actions {
+                display: none;
+                align-items: center;
+
+                .el-icon {
+                  margin-left: 4px;
+                  color: #909399;
+                  cursor: pointer;
+                  font-size: 14px;
+
+                  &:hover {
+                    color: #409eff;
+                  }
+                }
+              }
+
+              &:hover .field-actions {
+                display: flex;
+              }
+            }
+
+            .drop-zone {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 16px;
+              margin-top: 8px;
+              border: 1px dashed #dcdfe6;
+              border-radius: 4px;
+              background-color: #fff;
+              transition: all 0.2s;
+
+              &:hover,
+              &.drop-zone-active {
+                border-color: #409eff;
+                background-color: #ecf5ff;
+              }
+
+              .drop-icon {
+                font-size: 24px;
+                color: #c0c4cc;
+                margin-bottom: 4px;
+              }
+
+              .drop-hint {
+                font-size: 12px;
+                color: #909399;
+              }
+            }
+          }
+        }
+
+        .empty-slots {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
+          color: #909399;
+
+          p {
+            margin-top: 12px;
+          }
+        }
+      }
 
       .design-area {
         flex: 1;

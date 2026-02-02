@@ -56,6 +56,11 @@ public class DbTable implements Serializable {
     private LocalDateTime syncTime;
 
     /**
+     * 所属分组ID
+     */
+    private Long groupId;
+
+    /**
      * 是否删除
      */
     @TableLogic

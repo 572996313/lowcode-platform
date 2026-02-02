@@ -89,4 +89,25 @@ public class DbTableController {
         dbTableService.deleteTable(id);
         return Result.success();
     }
+
+    @PutMapping("/{id}/group")
+    @Operation(summary = "设置表的分组")
+    public Result<Void> setTableGroup(@PathVariable Long id, @RequestBody Map<String, Long> params) {
+        Long groupId = params.get("groupId");
+        dbTableService.setTableGroup(id, groupId);
+        return Result.success();
+    }
+
+    @PutMapping("/batch-group")
+    @Operation(summary = "批量设置表的分组")
+    public Result<Void> batchSetTableGroup(@RequestBody Map<String, Object> params) {
+        @SuppressWarnings("unchecked")
+        List<Number> tableIdNumbers = (List<Number>) params.get("tableIds");
+        List<Long> tableIds = tableIdNumbers.stream()
+                .map(Number::longValue)
+                .collect(java.util.stream.Collectors.toList());
+        Long groupId = params.get("groupId") != null ? Long.parseLong(params.get("groupId").toString()) : null;
+        dbTableService.batchSetTableGroup(tableIds, groupId);
+        return Result.success();
+    }
 }

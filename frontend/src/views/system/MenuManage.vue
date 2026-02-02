@@ -72,7 +72,14 @@
     </el-table>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" destroy-on-close>
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="600px"
+      destroy-on-close
+      v-dialog-draggable
+      v-dialog-resizable
+    >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="上级菜单" prop="parentId">
           <el-tree-select

@@ -2,18 +2,21 @@ import SimpleFormTemplate from './SimpleFormTemplate.vue'
 import TabFormTemplate from './TabFormTemplate.vue'
 import CardFormTemplate from './CardFormTemplate.vue'
 
+// 表单槽位元数据
+export interface FormSlotMeta {
+  id: string        // slot ID，用于 v-slot:name
+  label: string     // slot 显示名称
+  minFields?: number
+  maxFields?: number
+}
+
 export interface FormTemplateMeta {
   component: any
   templateCode: string
   templateName: string
   description: string
   previewImage?: string
-  fieldSlots: Array<{
-    id: string
-    label: string
-    minFields: number
-    maxFields: number
-  }>
+  fieldSlots: FormSlotMeta[]
 }
 
 export const formTemplateRegistry: Record<string, FormTemplateMeta> = {
@@ -55,3 +58,26 @@ export const getAllTemplates = () => Object.values(formTemplateRegistry)
 
 // 根据 templateCode 获取模板
 export const getTemplateByCode = (code: string) => formTemplateRegistry[code]
+
+/**
+ * 获取模板的槽位定义
+ * @param templateCode 模板编码
+ * @returns 槽位数组，如果模板不存在则返回空数组
+ */
+export function getTemplateSlots(templateCode: string): FormSlotMeta[] {
+  const template = formTemplateRegistry[templateCode]
+  return template?.fieldSlots || []
+}
+
+/**
+ * 获取模板元数据（不包含组件）
+ * @param templateCode 模板编码
+ * @returns 模板元数据，如果模板不存在则返回 null
+ */
+export function getTemplateMeta(templateCode: string): FormTemplateMeta | null {
+  const template = formTemplateRegistry[templateCode]
+  if (!template) return null
+  // 返回不包含 component 的元数据
+  const { component, ...meta } = template
+  return meta
+}

@@ -57,4 +57,14 @@ public interface IDbTableService extends IService<DbTable> {
      * 删除库表（级联删除字段）
      */
     void deleteTable(Long id);
+
+    /**
+     * 设置表的分组
+     */
+    void setTableGroup(Long tableId, Long groupId);
+
+    /**
+     * 批量设置表的分组
+     */
+    void batchSetTableGroup(List<Long> tableIds, Long groupId);
 }

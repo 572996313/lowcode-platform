@@ -5,7 +5,10 @@ export interface FormConfig {
   id?: number
   formName: string
   formCode: string
+  templateCode?: string  // 表单模板编码
   pageId?: number
+  tableId?: number
+  styleTemplateId?: number  // 样式模板ID
   formType?: string
   layoutType?: string
   layoutCols?: number
@@ -35,6 +38,7 @@ export interface FormField {
   sortOrder?: number
   span?: number
   labelWidth?: number
+  slotId?: string  // 模板槽位ID（用于基于模板的表单）
   optionsJson?: string
   rulesJson?: string
   propsJson?: string

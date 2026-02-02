@@ -1,6 +1,41 @@
 <template>
   <div v-loading="loading" class="form-render">
+    <!-- 基于模板的表单渲染 -->
+    <component
+      v-if="templateComponent && formConfig.templateCode"
+      :is="templateComponent"
+      :title="formConfig.formName"
+    >
+      <template v-for="slot in templateSlots" :key="slot.id" #[slot.id]>
+        <el-form
+          ref="formRef"
+          :model="formData"
+          :rules="rules"
+          :label-width="formConfig.labelWidth + 'px'"
+          :label-position="formConfig.labelPosition"
+          :size="formConfig.size"
+          class="slot-form"
+        >
+          <el-row :gutter="20">
+            <el-col
+              v-for="field in getFieldsBySlot(slot.id)"
+              :key="field.id"
+              :span="field.span || formConfig.layoutCols || 12"
+            >
+              <FormFieldRender
+                :field="field"
+                :model="formData"
+                @change="handleFieldChange"
+              />
+            </el-col>
+          </el-row>
+        </el-form>
+      </template>
+    </component>
+
+    <!-- 通用表单渲染（兼容没有模板的情况） -->
     <el-form
+      v-else
       ref="formRef"
       :model="formData"
       :rules="rules"
@@ -37,12 +72,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, shallowRef } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import type { FormConfig, FormField } from '@/api/form'
 import type { ButtonConfig } from '@/api/button'
 import { getFormConfig, getButtonsByFormId } from '@/api/form'
+import {
+  getTemplateByCode,
+  getTemplateSlots,
+  getTemplateMeta,
+  type FormSlotMeta
+} from '@/components/templates/TemplateRegistry'
 import FormFieldRender from './FormFieldRender.vue'
 import ButtonRenderer from './ButtonRenderer.vue'
 import { createButtonActionHandler } from '@/utils/buttonActionHandler'
@@ -74,6 +115,15 @@ const formConfig = ref<FormConfig & { fields?: FormField[] }>({})
 const formData = reactive<Record<string, any>>({})
 const rules = ref<Record<string, any>>({})
 const footerButtons = ref<ButtonConfig[]>([])
+
+// 模板相关状态
+const templateComponent = shallowRef<any>(null)
+const templateSlots = ref<FormSlotMeta[]>([])
+
+// 根据 slotId 获取字段列表
+const getFieldsBySlot = (slotId: string) => {
+  return (formConfig.value.fields || []).filter(field => field.slotId === slotId)
+}
 
 // 初始化表单数据
 const initFormData = (fields: FormField[]) => {
@@ -153,6 +203,19 @@ const loadFormConfig = async () => {
       }
     } else {
       formConfig.value = data
+    }
+
+    // 加载模板组件（如果有 templateCode）
+    if (formConfig.value.templateCode) {
+      const templateMeta = getTemplateMeta(formConfig.value.templateCode)
+      if (templateMeta) {
+        templateSlots.value = templateMeta.fieldSlots
+        // 动态加载模板组件
+        const template = getTemplateByCode(formConfig.value.templateCode)
+        if (template) {
+          templateComponent.value = template.component
+        }
+      }
     }
 
     // 初始化表单数据和验证规则
@@ -300,6 +363,10 @@ onMounted(() => {
   background: #fff;
   border-radius: 4px;
   padding: 20px;
+}
+
+.form-render :deep(.slot-form) {
+  /* Slot 内的表单样式 */
 }
 
 .form-actions {

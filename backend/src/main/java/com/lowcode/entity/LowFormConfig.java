@@ -31,6 +31,11 @@ public class LowFormConfig implements Serializable {
     private Long templateId;
 
     /**
+     * 表单模板编码（关联前端 TemplateRegistry）
+     */
+    private String templateCode;
+
+    /**
      * 来源类型（template=模板 custom=自定义）
      */
     private String sourceType;
@@ -44,6 +49,16 @@ public class LowFormConfig implements Serializable {
      * 表单编码
      */
     private String formCode;
+
+    /**
+     * 关联数据库表ID（关联db_table.id）
+     */
+    private Long tableId;
+
+    /**
+     * 样式模板ID（关联form_style_template.id）
+     */
+    private Long styleTemplateId;
 
     /**
      * 组件分类(common=通用组件库, business=业务组件库)

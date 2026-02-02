@@ -6,6 +6,8 @@ export interface TableConfig {
   tableName: string
   tableCode: string
   pageId?: number
+  sourceTableId?: number
+  styleTemplateId?: number  // 样式模板ID
   dataSourceType?: string
   apiUrl?: string
   apiMethod?: string

@@ -34,6 +34,7 @@ npm run dev          # 启动开发服务器 (http://localhost:3000)
 npm run build        # 构建生产版本 (vue-tsc && vite build)
 npm run preview      # 预览生产构建
 npm run lint         # 代码检查和自动修复
+npm run gen:component-map  # 生成组件路径映射（新增页面后需运行）
 ```
 
 ### 后端 (backend/)
@@ -102,7 +103,7 @@ mvn test             # 运行测试
 
 **数据库配置：**
 - 默认数据源：`mysql://localhost:3306/lowcode_platform`（用户名 root / 密码 1234）
-- MySQL 可能在 Docker 容器中，也可能是本地安装的 MySQL
+- MySQL 在本地安装的 MySQL
 - 逻辑删除字段：`deleted`（1=删除，0=存在）
 - 主键策略：`AUTO`（数据库自增）
 - 字段自动填充：`createTime`（插入时）、`updateTime`（插入和更新时）

@@ -9,6 +9,7 @@ export interface DbTable {
   tableComment?: string
   syncStatus?: number
   syncTime?: string
+  groupId?: number | null
   createTime?: string
   updateTime?: string
   fields?: DbTableField[]
@@ -85,4 +86,14 @@ export const batchUpdateFieldLabels = (fieldUpdates: Array<{ id: number; fieldLa
 // 删除库表（级联删除字段）
 export const deleteTable = (id: number) => {
   return request.delete(`/db-table/${id}`)
+}
+
+// 设置表的分组
+export const setTableGroup = (id: number, groupId: number | null) => {
+  return request.put(`/db-table/${id}/group`, { groupId })
+}
+
+// 批量设置表的分组
+export const batchSetTableGroup = (tableIds: number[], groupId: number | null) => {
+  return request.put('/db-table/batch-group', { tableIds, groupId })
 }

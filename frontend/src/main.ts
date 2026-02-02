@@ -9,8 +9,12 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import './styles/index.scss'
+import { setupDirectives } from './directives'
 
 const app = createApp(App)
+
+// 注册自定义指令
+setupDirectives(app)
 
 // Pinia
 const pinia = createPinia()

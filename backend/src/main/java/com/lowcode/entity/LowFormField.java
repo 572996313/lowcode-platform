@@ -33,6 +33,11 @@ public class LowFormField implements Serializable {
     private Long formId;
 
     /**
+     * 模板槽位ID（用于基于模板的表单）
+     */
+    private String slotId;
+
+    /**
      * 字段名称
      */
     private String fieldName;
