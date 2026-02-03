@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lowcode.common.exception.BusinessException;
 import com.lowcode.entity.SysDictCategory;
 import com.lowcode.mapper.SysDictCategoryMapper;
+import com.lowcode.dto.DictReferenceResult;
 import com.lowcode.service.ISysDictCategoryService;
+import com.lowcode.service.ISysDictReferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SysDictCategoryServiceImpl extends ServiceImpl<SysDictCategoryMapper, SysDictCategory>
         implements ISysDictCategoryService {
+
+    private final ISysDictReferenceService dictReferenceService;
 
     @Override
     public List<SysDictCategory> getCategoryTree() {
@@ -95,7 +99,22 @@ public class SysDictCategoryServiceImpl extends ServiceImpl<SysDictCategoryMappe
     @Override
     public void deleteCategory(Long id) {
         // 检查是否有子分类、检查是否有关联的字典明细
-        // 这里为了简化，直接允许删除，可以通过级联删除或提示用户处理关联数据
+        SysDictCategory category = getById(id);
+        if (category == null) {
+            throw new BusinessException("字典分类不存在");
+        }
+
+        // 检查是否有引用
+        if (category.getCategoryCode() != null) {
+            boolean isReferenced = dictReferenceService.isReferenced(category.getCategoryCode());
+            if (isReferenced) {
+                DictReferenceResult refs = dictReferenceService.findReferences(category.getCategoryCode());
+                throw new BusinessException(
+                        "字典【" + category.getCategoryName() + "】被 " + refs.getTotalCount() + " 个地方引用，无法删除"
+                );
+            }
+        }
+
         removeById(id);
         log.info("删除字典分类成功, id: {}", id);
     }

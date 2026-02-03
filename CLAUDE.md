@@ -337,3 +337,85 @@ public Result<PageConfig> getPage(@PathVariable Long id) {
 - **解决**：改为 `/lowcode/PageManage`（PascalCase）
 - **预防**：管理页面统一使用 PascalCase 路由
 
+**问题**：`ClassCastException: String cannot be cast to Integer`
+- **原因**：`@RequestParam Map<String, Object> params` 中，URL 查询参数值都是 **String 类型**，直接强制转换导致异常
+- **解决**：使用 `Integer.valueOf(params.getOrDefault("key", "defaultValue").toString())`
+- **预防**：参考下面「后端参数类型转换规范」
+
+**问题**：`Unknown column 'xxx' in 'field list'`
+- **原因**：实体类字段与数据库表结构不一致
+- **解决**：
+  - 方案一：给实体类字段添加 `@TableField(exist = false)` 注解（非数据库字段）
+  - 方案二：给数据库表添加对应字段
+- **预防**：参考下面「实体类与数据库表一致性规范」
+
+## 后端开发专项规范
+
+### 参数类型转换规范
+
+**Spring MVC `@RequestParam Map<String, Object>` 的类型特性：**
+
+所有 URL 查询参数值（`?key=value`）在 `Map<String, Object>` 中都是 **String 类型**，不是目标类型。
+
+**❌ 错误写法：**
+```java
+// 直接强制转换会抛出 ClassCastException
+Integer current = (Integer) params.getOrDefault("current", 1);
+Long size = (Long) params.getOrDefault("size", 10L);
+Boolean status = (Boolean) params.get("status");
+```
+
+**✅ 正确写法：**
+```java
+// 先转为 String，再解析为目标类型
+Integer current = Integer.valueOf(params.getOrDefault("current", "1").toString());
+Integer size = Integer.valueOf(params.getOrDefault("size", "10").toString());
+Boolean status = params.get("status") != null ? Boolean.valueOf(params.get("status").toString()) : null;
+```
+
+**推荐：创建参数解析工具类**
+```java
+public class ParamUtil {
+    public static Integer getInt(Map<String, Object> params, String key, Integer defaultValue) {
+        Object value = params.get(key);
+        if (value == null) return defaultValue;
+        return Integer.valueOf(value.toString());
+    }
+
+    public static Long getLong(Map<String, Object> params, String key, Long defaultValue) {
+        Object value = params.get(key);
+        if (value == null) return defaultValue;
+        return Long.valueOf(value.toString());
+    }
+
+    public static Boolean getBoolean(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        return value != null ? Boolean.valueOf(value.toString()) : null;
+    }
+}
+```
+
+### 实体类与数据库表一致性规范
+
+**实体类字段必须与数据库表结构保持一致，否则会导致 SQL 错误。**
+
+**不一致时的处理方案：**
+
+| 场景 | 解决方案 | 示例 |
+|-----|---------|------|
+| 实体类有字段，表没有 | 添加 `@TableField(exist = false)` | `@TableField(exist = false) private String createBy;` |
+| 表有字段，实体类没有 | 在实体类添加对应字段 | `private String createBy;` |
+| 字段名不一致 | 使用 `@TableField` 指定列名 | `@TableField("user_name") private String userName;` |
+
+**检查清单（新增实体类/修改表结构后）：**
+1. 确认实体类字段与数据库表字段一一对应
+2. 确认字段类型匹配（String → VARCHAR，Integer → INT 等）
+3. 确认逻辑删除字段 `@TableLogic` 注解正确
+4. 确认自动填充字段 `@TableField(fill = ...)` 注解正确
+5. 运行应用后检查日志，确认没有 SQL 字段错误
+
+**建表脚本规范：**
+- 建表脚本应包含所有实体类字段对应的列
+- 标准字段：`id`, `create_time`, `update_time`, `deleted`, `create_by`（可选）
+- 字符集：`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+

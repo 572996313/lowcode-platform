@@ -1,5 +1,15 @@
 <template>
-  <div class="layout-container">
+  <!-- 全屏模式 - 直接渲染内容 -->
+  <div v-if="isFullscreen" class="layout-fullscreen">
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+  </div>
+
+  <!-- 正常布局模式 -->
+  <div v-else class="layout-container">
     <!-- 侧边栏 -->
     <div class="sidebar" :class="{ 'is-collapse': isCollapse }">
       <div class="logo">
@@ -20,28 +30,8 @@
           <template #title>首页</template>
         </el-menu-item>
 
-        <!-- 动态菜单 -->
-        <template v-for="menu in sidebarMenus" :key="menu.id">
-          <!-- 目录类型 -->
-          <el-sub-menu v-if="menu.menuType === 1" :index="menu.menuCode">
-            <template #title>
-              <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-              <span>{{ menu.menuName }}</span>
-            </template>
-            <template v-for="child in menu.children" :key="child.id">
-              <el-menu-item v-if="child.menuType === 2 && child.routePath" :index="child.routePath">
-                <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
-                <template #title>{{ child.menuName }}</template>
-              </el-menu-item>
-            </template>
-          </el-sub-menu>
-
-          <!-- 菜单类型（直接在顶层） -->
-          <el-menu-item v-else-if="menu.menuType === 2 && menu.routePath" :index="menu.routePath">
-            <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-            <template #title>{{ menu.menuName }}</template>
-          </el-menu-item>
-        </template>
+        <!-- 动态菜单 - 使用递归组件支持多层级 -->
+        <SidebarItem :menus="sidebarMenus" />
       </el-menu>
     </div>
 
@@ -91,6 +81,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
+import SidebarItem from './components/SidebarItem.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +90,8 @@ const menuStore = useMenuStore()
 const isCollapse = ref(false)
 
 const activeMenu = computed(() => route.path)
+
+const isFullscreen = computed(() => route.meta.fullscreen === true)
 
 const sidebarMenus = computed(() => {
   return menuStore.getSidebarMenus().filter(m => m.status !== false)
@@ -220,5 +213,12 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+// 全屏模式
+.layout-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 </style>

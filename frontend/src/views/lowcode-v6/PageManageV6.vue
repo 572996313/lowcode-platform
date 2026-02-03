@@ -26,7 +26,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="updatedAt" label="更新时间" width="180" />
-        <el-table-column label="操作" width="250" align="center" fixed="right">
+        <el-table-column label="操作" width="320" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" text @click="handleEdit(row)">
               编辑
@@ -43,6 +43,15 @@
             >
               发布
             </el-button>
+            <el-button
+              v-if="row.published"
+              type="warning"
+              size="small"
+              text
+              @click="handleUnpublish(row)"
+            >
+              取消发布
+            </el-button>
             <el-button type="danger" size="small" text @click="handleDelete(row)">
               删除
             </el-button>
@@ -51,12 +60,14 @@
       </el-table>
 
       <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
+        :current-page="currentPage"
+        :page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
         style="margin-top: 16px; justify-content: flex-end"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
       />
     </div>
 
@@ -89,6 +100,7 @@ import { Plus, FullScreen } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageRenderV6 from './PageRenderV6.vue'
 import type { NewPageConfig } from '@/types/page-v6'
+import { getPageList, publishPage, deletePage, unpublishPage } from '@/api/page'
 
 const router = useRouter()
 
@@ -110,39 +122,32 @@ onMounted(() => {
 })
 
 /**
+ * 分页变化
+ */
+function handlePageChange(page: number) {
+  currentPage.value = page
+  loadPageList()
+}
+
+function handleSizeChange(size: number) {
+  pageSize.value = size
+  currentPage.value = 1
+  loadPageList()
+}
+
+/**
  * 加载页面列表
  */
 async function loadPageList() {
   loading.value = true
   try {
-    // TODO: 调用 API 加载列表
-    // const res = await getPageList({
-    //   page: currentPage.value,
-    //   size: pageSize.value
-    // })
-    // pageList.value = res.data.records
-    // total.value = res.data.total
-
-    // 模拟数据
-    pageList.value = [
-      {
-        id: 1,
-        pageName: '用户管理',
-        pageCode: 'user-manage',
-        description: '用户管理页面',
-        published: true,
-        updatedAt: '2024-01-01 12:00:00'
-      },
-      {
-        id: 2,
-        pageName: '角色管理',
-        pageCode: 'role-manage',
-        description: '角色管理页面',
-        published: false,
-        updatedAt: '2024-01-02 12:00:00'
-      }
-    ]
-    total.value = 2
+    const res = await getPageList({
+      current: currentPage.value,
+      size: pageSize.value
+    })
+    // 响应拦截器已经返回了 data 对象，直接使用 res 而不是 res.data
+    pageList.value = res.records
+    total.value = res.total
   } catch (error) {
     ElMessage.error('加载页面列表失败')
     console.error(error)
@@ -155,14 +160,14 @@ async function loadPageList() {
  * 新建页面
  */
 function handleCreate() {
-  router.push('/lowcode/PageDesigner')
+  router.push('/lowcode/FreeCanvasDesigner/new')
 }
 
 /**
  * 编辑页面
  */
 function handleEdit(row: any) {
-  router.push(`/lowcode/PageDesigner/${row.id}`)
+  router.push(`/lowcode/FreeCanvasDesigner/${row.id}`)
 }
 
 /**
@@ -187,20 +192,55 @@ async function handlePreview(row: any) {
  */
 async function handlePublish(row: any) {
   try {
-    await ElMessageBox.confirm(
-      '发布后页面将正式生效，是否继续？',
-      '确认发布',
-      { type: 'warning' }
+    // 弹出对话框输入路由路径
+    const { value: routePath } = await ElMessageBox.prompt(
+      '请输入页面路由路径（如：/pages/custom）',
+      '发布页面',
+      {
+        confirmButtonText: '确认发布',
+        cancelButtonText: '取消',
+        inputPattern: /^\/.+/,
+        inputErrorMessage: '路由路径必须以 / 开头'
+      }
     )
 
-    // TODO: 调用 API 发布
-    // await publishPage(row.id)
+    // 调用发布 API
+    await publishPage(row.id, { routePath })
 
+    // 更新本地状态
     row.published = true
+    row.routePath = routePath
     ElMessage.success('发布成功')
+
+    // 重新加载列表以获取最新状态
+    loadPageList()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('发布失败')
+      console.error(error)
+    }
+  }
+}
+
+/**
+ * 取消发布页面
+ */
+async function handleUnpublish(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      '取消发布后页面将不再可访问，是否继续？',
+      '确认取消发布',
+      { type: 'warning' }
+    )
+
+    await unpublishPage(row.id)
+    row.published = false
+    row.routePath = null
+    ElMessage.success('已取消发布')
+    loadPageList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('取消发布失败')
       console.error(error)
     }
   }
@@ -217,9 +257,7 @@ async function handleDelete(row: any) {
       { type: 'warning' }
     )
 
-    // TODO: 调用 API 删除
-    // await deletePage(row.id)
-
+    await deletePage(row.id)
     ElMessage.success('删除成功')
     loadPageList()
   } catch (error) {

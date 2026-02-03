@@ -49,6 +49,31 @@ export interface DictItemSimple {
   value: string
 }
 
+/**
+ * 字典引用详情
+ */
+export interface DictReferenceDetail {
+  resourceType: string
+  resourceId: number
+  resourceName: string
+  pageId?: number
+  pageName?: string
+  fieldCode?: string
+  fieldLabel?: string
+  referencePath?: string
+  resourceTypeDesc: string
+}
+
+/**
+ * 字典引用结果
+ */
+export interface DictReferenceResult {
+  dictCode: string
+  dictName: string
+  totalCount: number
+  references: DictReferenceDetail[]
+}
+
 // ===== 分类接口 =====
 
 /**
@@ -127,3 +152,47 @@ export const getItemsByCategoryCode = (categoryCode: string) =>
  * @deprecated 请使用 getItemsByCategoryCode
  */
 export const getDictByCode = (code: string) => request.get<{ label: string; value: string }[]>(`/dict/${code}`)
+
+// ===== 字典引用接口 =====
+
+/**
+ * 查询字典引用
+ */
+export const getDictReferences = (dictCode: string) =>
+  request.get<DictReferenceResult>(`/dict/reference/${dictCode}`)
+
+/**
+ * 检查字典是否被引用
+ */
+export const isDictReferenced = (dictCode: string) =>
+  request.get<boolean>(`/dict/reference/${dictCode}/check`)
+
+/**
+ * 获取字典引用数量
+ */
+export const getDictReferenceCount = (dictCode: string) =>
+  request.get<number>(`/dict/reference/${dictCode}/count`)
+
+/**
+ * 获取所有字典的引用计数
+ */
+export const getAllDictReferenceCounts = () =>
+  request.get<Record<string, number>>('/dict/reference/counts')
+
+/**
+ * 查询未使用的字典
+ */
+export const getUnusedDicts = () =>
+  request.get<string[]>('/dict/reference/unused')
+
+/**
+ * 重建引用索引
+ */
+export const rebuildDictReferences = () =>
+  request.post<number>('/dict/reference/rebuild')
+
+/**
+ * 清理无效引用
+ */
+export const cleanUnusedReferences = () =>
+  request.post<number>('/dict/reference/clean')

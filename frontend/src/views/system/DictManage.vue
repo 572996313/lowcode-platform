@@ -27,12 +27,15 @@
               <el-tag v-if="data.categoryCode" size="small" type="info">
                 {{ data.categoryCode }}
               </el-tag>
+              <el-tag v-if="referenceCounts[data.categoryCode]" size="small" type="warning">
+                {{ referenceCounts[data.categoryCode] }}
+              </el-tag>
             </div>
           </template>
         </el-tree>
       </div>
 
-      <!-- 右侧：字典明细列表 -->
+      <!-- 中间：字典明细列表 -->
       <div class="item-list-panel">
         <el-empty v-if="!selectedCategoryId" description="请从左侧选择字典分类" />
 
@@ -44,6 +47,9 @@
             </el-button>
             <el-button type="danger" :disabled="selectedItemIds.length === 0" @click="handleBatchDelete">
               <el-icon><Delete /></el-icon>批量删除
+            </el-button>
+            <el-button type="danger" :disabled="!selectedCategory || selectedCategory.parentId !== 0" @click="handleDeleteCategory">
+              <el-icon><Delete /></el-icon>删除分类
             </el-button>
           </div>
 
@@ -89,6 +95,43 @@
             </el-table-column>
           </el-table>
         </template>
+      </div>
+
+      <!-- 右侧：引用详情 -->
+      <div class="reference-panel" v-if="selectedCategory">
+        <div class="panel-title">
+          <span>引用详情</span>
+          <el-tag v-if="referenceResult" :type="referenceResult.totalCount > 0 ? 'warning' : 'success'">
+            {{ referenceResult?.totalCount || 0 }} 处引用
+          </el-tag>
+        </div>
+        <div class="reference-content" v-loading="referenceLoading">
+          <el-empty v-if="!referenceResult || referenceResult.totalCount === 0" description="暂无引用" />
+          <div v-else class="reference-list">
+            <div
+              v-for="(ref, index) in referenceResult?.references"
+              :key="index"
+              class="reference-item"
+            >
+              <div class="reference-header">
+                <el-tag size="small" :type="getResourceTypeTagType(ref.resourceType)">
+                  {{ ref.resourceTypeDesc }}
+                </el-tag>
+                <span class="reference-name">{{ ref.resourceName || ref.fieldLabel }}</span>
+              </div>
+              <div class="reference-details">
+                <span v-if="ref.pageName" class="detail-item">
+                  <el-icon><Document /></el-icon>
+                  {{ ref.pageName }}
+                </span>
+                <span v-if="ref.fieldCode" class="detail-item">
+                  <el-icon><Key /></el-icon>
+                  {{ ref.fieldCode }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -185,7 +228,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete, Document, Key } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
   getCategoryTree,
@@ -197,19 +240,28 @@ import {
   updateItem,
   deleteItem,
   batchDeleteItems,
+  getDictReferences,
+  getAllDictReferenceCounts,
   type DictCategory,
-  type DictItem
+  type DictItem,
+  type DictReferenceResult
 } from '@/api/dict'
 
 // 分类树数据
 const categoryTreeData = ref<DictCategory[]>([])
 const selectedCategoryId = ref<number | null>(null)
+const selectedCategory = ref<DictCategory | null>(null)
 const loading = ref(false)
 const submitLoading = ref(false)
 
 // 字典明细列表
 const itemList = ref<DictItem[]>([])
 const selectedItemIds = ref<number[]>([])
+
+// 引用相关
+const referenceResult = ref<DictReferenceResult | null>(null)
+const referenceCounts = ref<Record<string, number>>({})
+const referenceLoading = ref(false)
 
 // 分类对话框
 const categoryDialogVisible = ref(false)
@@ -260,6 +312,8 @@ const loadCategoryTree = async () => {
   loading.value = true
   try {
     categoryTreeData.value = await getCategoryTree()
+    // 加载所有引用计数
+    await loadAllReferenceCounts()
   } catch (error) {
     ElMessage.error('加载字典分类失败')
     console.error(error)
@@ -268,10 +322,90 @@ const loadCategoryTree = async () => {
   }
 }
 
+// 加载所有字典的引用计数
+const loadAllReferenceCounts = async () => {
+  try {
+    referenceCounts.value = await getAllDictReferenceCounts()
+  } catch (error) {
+    console.error('加载引用计数失败:', error)
+  }
+}
+
 // 分类节点点击
 const handleCategoryClick = (data: DictCategory) => {
   selectedCategoryId.value = data.id
+  selectedCategory.value = data
   loadItemList()
+  loadReferences(data.categoryCode)
+}
+
+// 加载引用详情
+const loadReferences = async (categoryCode?: string) => {
+  if (!categoryCode) {
+    referenceResult.value = null
+    return
+  }
+
+  referenceLoading.value = true
+  try {
+    referenceResult.value = await getDictReferences(categoryCode)
+  } catch (error) {
+    console.error('加载引用详情失败:', error)
+  } finally {
+    referenceLoading.value = false
+  }
+}
+
+// 获取资源类型标签类型
+const getResourceTypeTagType = (resourceType: string) => {
+  switch (resourceType) {
+    case 'form_field':
+      return 'primary'
+    case 'table_column':
+      return 'success'
+    case 'form_template':
+      return 'warning'
+    case 'table_template':
+      return 'info'
+    default:
+      return ''
+  }
+}
+
+// 删除分类
+const handleDeleteCategory = async () => {
+  if (!selectedCategory.value) return
+
+  try {
+    // 检查是否有引用
+    if (selectedCategory.value.categoryCode && referenceCounts.value[selectedCategory.value.categoryCode]) {
+      await ElMessageBox.confirm(
+        `字典【${selectedCategory.value.categoryName}】被 ${referenceCounts.value[selectedCategory.value.categoryCode]} 个地方引用，删除后可能导致相关功能异常，确定要删除吗？`,
+        '警告',
+        {
+          type: 'warning',
+          confirmButtonText: '仍然删除',
+          cancelButtonText: '取消',
+          distinguishCancelAndClose: true
+        }
+      )
+    } else {
+      await ElMessageBox.confirm(`确定要删除字典分类"${selectedCategory.value.categoryName}"吗？`, '提示', {
+        type: 'warning'
+      })
+    }
+
+    await deleteCategory(selectedCategory.value.id)
+    ElMessage.success('删除成功')
+    selectedCategoryId.value = null
+    selectedCategory.value = null
+    referenceResult.value = null
+    await loadCategoryTree()
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
 
 // 加载字典明细列表
@@ -523,6 +657,70 @@ onMounted(() => {
 
       .el-table {
         flex: 1;
+      }
+    }
+
+    .reference-panel {
+      width: 320px;
+      background: #fff;
+      border-radius: 4px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+
+      .panel-title {
+        padding: 16px;
+        font-weight: 600;
+        border-bottom: 1px solid #e6e6e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .reference-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+      }
+
+      .reference-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .reference-item {
+        padding: 12px;
+        background: #f5f7fa;
+        border-radius: 4px;
+        border: 1px solid #e6e6e6;
+
+        .reference-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+
+          .reference-name {
+            font-weight: 500;
+            color: #303133;
+            font-size: 14px;
+          }
+        }
+
+        .reference-details {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+
+          .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #606266;
+          }
+        }
       }
     }
   }

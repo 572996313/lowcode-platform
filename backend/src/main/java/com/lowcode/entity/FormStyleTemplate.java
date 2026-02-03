@@ -62,6 +62,7 @@ public class FormStyleTemplate implements Serializable {
     /**
      * 创建者
      */
+    @TableField(exist = false)
     private String createBy;
 
     /**

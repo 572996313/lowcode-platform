@@ -22,8 +22,8 @@ public class FormTemplateServiceImpl extends ServiceImpl<LowFormTemplateMapper, 
 
     @Override
     public PageResult<LowFormTemplate> getPage(Map<String, Object> params) {
-        Integer current = (Integer) params.getOrDefault("current", 1);
-        Integer size = (Integer) params.getOrDefault("size", 10);
+        Integer current = Integer.valueOf(params.getOrDefault("current", "1").toString());
+        Integer size = Integer.valueOf(params.getOrDefault("size", "10").toString());
         String templateName = (String) params.get("templateName");
         Boolean status = params.get("status") != null ? Boolean.valueOf(params.get("status").toString()) : null;
 

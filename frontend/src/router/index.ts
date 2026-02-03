@@ -27,6 +27,13 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'PagePreview',
         component: () => import('@/views/lowcode-v6/PageRenderV6.vue'),
         meta: { title: '页面预览', hideInMenu: true }
+      },
+      // 自由画布设计器
+      {
+        path: 'lowcode/FreeCanvasDesigner/:pageId',
+        name: 'FreeCanvasDesigner',
+        component: () => import('@/views/lowcode-v6/FreeCanvasDesigner.vue'),
+        meta: { title: '自由画布设计器', hideInMenu: true, fullscreen: true }
       }
     ]
   }

@@ -13,6 +13,7 @@ import com.lowcode.entity.LowTableConfig;
 import com.lowcode.mapper.LowTableColumnMapper;
 import com.lowcode.mapper.LowTableConfigMapper;
 import com.lowcode.service.ILowTableConfigService;
+import com.lowcode.service.ISysDictReferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class LowTableConfigServiceImpl extends ServiceImpl<LowTableConfigMapper, LowTableConfig> implements ILowTableConfigService {
 
     private final LowTableColumnMapper tableColumnMapper;
+    private final ISysDictReferenceService dictReferenceService;
 
     @Override
     public PageResult<LowTableConfig> getTableList(Map<String, Object> params) {
@@ -125,7 +127,15 @@ public class LowTableConfigServiceImpl extends ServiceImpl<LowTableConfigMapper,
 
         // 更新表格列配置
         if (tableConfig.getColumns() != null) {
-            // 删除原有列配置
+            // 删除原有列配置和字典引用
+            List<LowTableColumn> oldColumns = tableColumnMapper.selectList(
+                    Wrappers.lambdaQuery(LowTableColumn.class)
+                            .eq(LowTableColumn::getTableId, id)
+            );
+            for (LowTableColumn oldColumn : oldColumns) {
+                dictReferenceService.removeByResource(
+                        ISysDictReferenceService.RESOURCE_TYPE_TABLE_COLUMN, oldColumn.getId());
+            }
             tableColumnMapper.delete(
                     Wrappers.lambdaQuery(LowTableColumn.class)
                             .eq(LowTableColumn::getTableId, id)
@@ -142,6 +152,15 @@ public class LowTableConfigServiceImpl extends ServiceImpl<LowTableConfigMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteTableConfig(Long id) {
+        // 删除列配置的字典引用
+        List<LowTableColumn> columns = tableColumnMapper.selectList(
+                Wrappers.lambdaQuery(LowTableColumn.class)
+                        .eq(LowTableColumn::getTableId, id)
+        );
+        for (LowTableColumn column : columns) {
+            dictReferenceService.removeByResource(
+                    ISysDictReferenceService.RESOURCE_TYPE_TABLE_COLUMN, column.getId());
+        }
         // 删除表格列配置
         tableColumnMapper.delete(
                 Wrappers.lambdaQuery(LowTableColumn.class)
@@ -160,6 +179,21 @@ public class LowTableConfigServiceImpl extends ServiceImpl<LowTableConfigMapper,
             column.setTableId(tableId);
             column.setSortOrder(i);
             tableColumnMapper.insert(column);
+
+            // 添加字典引用
+            if (StrUtil.isNotBlank(column.getDictCode())) {
+                dictReferenceService.addReference(
+                        column.getDictCode(),
+                        ISysDictReferenceService.RESOURCE_TYPE_TABLE_COLUMN,
+                        column.getId(),
+                        column.getColumnName(),
+                        tableId,
+                        null,
+                        column.getColumnCode(),
+                        column.getLabel(),
+                        "dictCode"
+                );
+            }
         }
     }
 

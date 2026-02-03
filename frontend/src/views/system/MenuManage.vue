@@ -96,7 +96,6 @@
           <el-radio-group v-model="form.menuType">
             <el-radio :value="1">目录</el-radio>
             <el-radio :value="2">菜单</el-radio>
-            <el-radio :value="3">按钮</el-radio>
           </el-radio-group>
         </el-form-item>
         <template v-if="form.menuType === 2">
@@ -117,16 +116,11 @@
           <el-input v-model="form.icon" placeholder="请输入图标名称" />
         </el-form-item>
         <el-form-item label="组件路径" prop="componentPath" v-if="form.menuType === 2 && componentSource === 'static'">
-          <el-select v-model="form.componentPath" placeholder="请选择组件路径" style="width: 100%">
+          <el-select v-model="form.componentPath" placeholder="请选择组件路径" filterable style="width: 100%">
             <el-option label="暂不配置(显示占位页面)" value="" />
-            <el-option label="用户管理 /views/system/UserManage.vue" value="/views/system/UserManage.vue" />
-            <el-option label="角色管理 /views/system/RoleManage.vue" value="/views/system/RoleManage.vue" />
-            <el-option label="菜单管理 /views/system/MenuManage.vue" value="/views/system/MenuManage.vue" />
-            <el-option label="页面管理 /views/lowcode/PageManage.vue" value="/views/lowcode/PageManage.vue" />
-            <el-option label="表单管理 /views/lowcode/FormManage.vue" value="/views/lowcode/FormManage.vue" />
-            <el-option label="表格管理 /views/lowcode/TableManage.vue" value="/views/lowcode/TableManage.vue" />
-            <el-option label="按钮管理 /views/lowcode/ButtonManage.vue" value="/views/lowcode/ButtonManage.vue" />
-            <el-option label="页面设计器 /views/lowcode/PageDesigner.vue" value="/views/lowcode/PageDesigner.vue" />
+            <ElOptionGroup v-for="(options, group) in componentGroups" :key="group" :label="group">
+              <el-option v-for="opt in options" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </ElOptionGroup>
           </el-select>
           <div class="form-tip">
             <el-icon><InfoFilled /></el-icon>
@@ -176,10 +170,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElOptionGroup } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getMenuTree, createMenu, updateMenu, deleteMenu, type Menu } from '@/api/menu'
 import { getPublishedPages, type PageConfig } from '@/api/page'
+import { componentMap, extractRoutePath } from '@/router/componentMap'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -214,6 +209,41 @@ const rules: FormRules = {
 
 const menuTreeOptions = computed(() => {
   return [{ id: 0, menuName: '根目录', children: menuTree.value }]
+})
+
+// 组件选项分组
+const componentGroups = computed(() => {
+  const groups: Record<string, Array<{ label: string; value: string }>> = {
+    '【系统管理】': [],
+    '【低代码 V6】': [],
+    '【低代码核心】': [],
+    '【布局组件】': [],
+    '【其他组件】': []
+  }
+
+  Object.keys(componentMap).forEach(path => {
+    const routePath = extractRoutePath(path)
+    const label = `${routePath.replace(/\//g, '/')} (${path.split('/').pop()})`
+
+    if (path.startsWith('/views/system/')) {
+      groups['【系统管理】'].push({ label, value: path })
+    } else if (path.startsWith('/views/lowcode-v6/')) {
+      groups['【低代码 V6】'].push({ label, value: path })
+    } else if (path.startsWith('/views/lowcode/')) {
+      groups['【低代码核心】'].push({ label, value: path })
+    } else if (path.startsWith('/views/layout/')) {
+      groups['【布局组件】'].push({ label, value: path })
+    } else {
+      groups['【其他组件】'].push({ label, value: path })
+    }
+  })
+
+  // 排序每组内的选项
+  Object.keys(groups).forEach(key => {
+    groups[key].sort((a, b) => a.label.localeCompare(b.label))
+  })
+
+  return groups
 })
 
 const loadMenuTree = async () => {
@@ -290,6 +320,7 @@ const handleAddChild = (row: Menu) => {
   form.parentId = row.id
   dialogTitle.value = '新增子菜单'
   dialogVisible.value = true
+  loadPublishedPages()
 }
 
 const handleEdit = (row: Menu) => {

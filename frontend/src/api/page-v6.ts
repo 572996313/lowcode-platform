@@ -1,5 +1,6 @@
 /**
  * 页面配置 API（V6 版本）
+ * 复用现有后端接口 /api/page
  */
 import request from '@/utils/request'
 import type { NewPageConfig } from '@/types/page-v6'
@@ -13,7 +14,7 @@ export function getPageList(params: {
   keyword?: string
 }) {
   return request({
-    url: '/lowcode/v6/page',
+    url: '/page/list',
     method: 'get',
     params
   })
@@ -24,7 +25,7 @@ export function getPageList(params: {
  */
 export function getPageConfig(id: number) {
   return request({
-    url: `/lowcode/v6/page/${id}`,
+    url: `/page/${id}`,
     method: 'get'
   })
 }
@@ -34,7 +35,7 @@ export function getPageConfig(id: number) {
  */
 export function createPage(data: NewPageConfig) {
   return request({
-    url: '/lowcode/v6/page',
+    url: '/page',
     method: 'post',
     data
   })
@@ -45,7 +46,7 @@ export function createPage(data: NewPageConfig) {
  */
 export function updatePage(id: number, data: NewPageConfig) {
   return request({
-    url: `/lowcode/v6/page/${id}`,
+    url: `/page/${id}`,
     method: 'put',
     data
   })
@@ -66,7 +67,7 @@ export function savePageConfig(data: NewPageConfig) {
  */
 export function deletePage(id: number) {
   return request({
-    url: `/lowcode/v6/page/${id}`,
+    url: `/page/${id}`,
     method: 'delete'
   })
 }
@@ -76,7 +77,7 @@ export function deletePage(id: number) {
  */
 export function publishPage(id: number) {
   return request({
-    url: `/lowcode/v6/page/${id}/publish`,
+    url: `/page/${id}/publish`,
     method: 'post'
   })
 }
@@ -86,7 +87,7 @@ export function publishPage(id: number) {
  */
 export function unpublishPage(id: number) {
   return request({
-    url: `/lowcode/v6/page/${id}/unpublish`,
+    url: `/page/${id}/unpublish`,
     method: 'post'
   })
 }
@@ -96,7 +97,7 @@ export function unpublishPage(id: number) {
  */
 export function copyPage(id: number, newName: string) {
   return request({
-    url: `/lowcode/v6/page/${id}/copy`,
+    url: `/page/${id}/copy`,
     method: 'post',
     data: { pageName: newName }
   })
