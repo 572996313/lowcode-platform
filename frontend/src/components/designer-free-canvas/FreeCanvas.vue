@@ -170,8 +170,8 @@ const panStart = ref({ x: 0, y: 0 })
 
 // 缩放
 const zoom = ref(1)
-const minZoom = computed(() => props.config.canvas.minZoom ?? 1)
-const maxZoom = computed(() => props.config.canvas.maxZoom ?? 1.5)
+const minZoom = computed(() => props.config?.canvas?.minZoom ?? 1)
+const maxZoom = computed(() => props.config?.canvas?.maxZoom ?? 1.5)
 
 // 拖拽状态
 const dragState = ref({
@@ -196,11 +196,22 @@ const dragPreview = ref({
 // 键盘按键状态
 const keysPressed = ref<Set<string>>(new Set())
 
-// 画布配置
-const canvasConfig = computed(() => props.config.canvas)
+// 画布配置（添加默认值保护）
+const canvasConfig = computed(() => {
+  return props.config?.canvas || {
+    width: 1200,
+    height: null,
+    backgroundColor: '#f5f7fa',
+    gridSize: 10,
+    snapToGrid: true,
+    zoom: 1,
+    minZoom: 1,
+    maxZoom: 1.5
+  }
+})
 
-// 组件列表
-const components = computed(() => props.config.components)
+// 组件列表（添加默认值保护）
+const components = computed(() => props.config?.components || [])
 
 // 画布高度
 const canvasHeight = computed(() => {
@@ -245,7 +256,7 @@ watch(zoom, (newZoom) => {
   emit('update:config', {
     ...props.config,
     canvas: {
-      ...props.config.canvas,
+      ...props.config?.canvas,
       zoom: newZoom
     }
   })
@@ -289,7 +300,7 @@ function handleSelect(id: string) {
  * 处理组件更新
  */
 function handleUpdate(instance: CompInstance) {
-  const newComponents = [...props.config.components]
+  const newComponents = [...(props.config?.components || [])]
   const index = newComponents.findIndex(c => c.id === instance.id)
   if (index > -1) {
     newComponents[index] = instance
@@ -304,7 +315,7 @@ function handleUpdate(instance: CompInstance) {
  * 处理删除
  */
 function handleDelete(id: string) {
-  const newComponents = props.config.components.filter(c => c.id !== id)
+  const newComponents = (props.config?.components || []).filter(c => c.id !== id)
   emit('update:config', {
     ...props.config,
     components: newComponents
@@ -390,20 +401,20 @@ function clampPanOffset() {
   if (!wrapper) return
 
   const wrapperRect = wrapper.getBoundingClientRect()
-  const canvasWidth = canvasConfig.value.width * zoom.value
-  const canvasHeight = canvasHeight.value * zoom.value
+  const scaledCanvasWidth = canvasConfig.value.width * zoom.value
+  const scaledCanvasHeight = canvasHeight.value * zoom.value
 
   // 至少保留 100px 的画布在视口内可见
   const minVisible = 100
 
   // X 轴限制
   const maxPanX = minVisible
-  const minPanX = wrapperRect.width - canvasWidth - minVisible
+  const minPanX = wrapperRect.width - scaledCanvasWidth - minVisible
   panOffset.value.x = Math.max(minPanX, Math.min(maxPanX, panOffset.value.x))
 
   // Y 轴限制
   const maxPanY = minVisible
-  const minPanY = wrapperRect.height - canvasHeight - minVisible
+  const minPanY = wrapperRect.height - scaledCanvasHeight - minVisible
   panOffset.value.y = Math.max(minPanY, Math.min(maxPanY, panOffset.value.y))
 }
 
@@ -618,7 +629,7 @@ function handleDrop(event: DragEvent) {
 
       emit('update:config', {
         ...props.config,
-        components: [...props.config.components, newInstance]
+        components: [...(props.config?.components || []), newInstance]
       })
 
       // 选中新创建的组件
@@ -793,7 +804,7 @@ onMounted(() => {
   }, 0)
 
   // 从配置加载缩放
-  if (props.config.canvas.zoom) {
+  if (props.config?.canvas?.zoom) {
     zoom.value = props.config.canvas.zoom
   }
 

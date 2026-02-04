@@ -38,7 +38,7 @@
                 <el-input-number
                   v-model="position.x"
                   :min="0"
-                  :step="canvasConfig.gridSize || 1"
+                  :step="canvasConfig?.gridSize || 1"
                   @change="handlePositionChange"
                 />
               </el-form-item>
@@ -46,7 +46,7 @@
                 <el-input-number
                   v-model="position.y"
                   :min="0"
-                  :step="canvasConfig.gridSize || 1"
+                  :step="canvasConfig?.gridSize || 1"
                   @change="handlePositionChange"
                 />
               </el-form-item>

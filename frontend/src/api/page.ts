@@ -36,7 +36,15 @@ export interface PageConfig {
 // =============================================
 
 // 获取页面列表（分页）
-export const getPageList = (params: { current: number; size: number; keyword?: string }) => {
+export const getPageList = (params: {
+  current: number
+  size: number
+  keyword?: string
+  pageName?: string
+  pageCode?: string
+  pageType?: string
+  published?: boolean
+}) => {
   return request.get<PageResult<PageConfig>>('/page/list', params)
 }
 

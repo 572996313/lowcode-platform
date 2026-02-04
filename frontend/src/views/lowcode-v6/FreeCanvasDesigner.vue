@@ -12,12 +12,19 @@
         </el-icon>
         <h1 class="page-title">自由画布设计器</h1>
         <el-input
-          v-if="pageConfig"
+          v-if="pageConfig?.pageInfo"
           v-model="pageConfig.pageInfo.pageName"
           placeholder="页面名称"
           size="small"
           class="page-name-input"
           @change="handlePageNameChange"
+        />
+        <el-input
+          v-if="pageConfig?.pageInfo"
+          v-model="pageConfig.pageInfo.pageCode"
+          placeholder="页面编码"
+          size="small"
+          class="page-code-input"
         />
       </div>
 
@@ -97,6 +104,7 @@ import PropertyPanel from '@/components/designer-free-canvas/PropertyPanel.vue'
 import FreeCanvasRender from '@/components/render-free-canvas/FreeCanvasRender.vue'
 import type { FreeCanvasPageConfig, ComponentInstance } from '@/types/page-free-canvas'
 import { createEmptyPageConfig } from '@/types/page-free-canvas'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,15 +148,82 @@ onMounted(async () => {
  */
 async function loadPageConfig(id: number) {
   try {
-    // TODO: 调用 API 加载页面配置
-    // const data = await getFreeCanvasPage(id)
-    // pageConfig.value = data
+    const res = await request({
+      url: `/page/${id}`,
+      method: 'get'
+    })
 
-    // 临时：使用空配置
-    pageConfig.value = createEmptyPageConfig()
-    pageConfig.value.pageInfo.pageName = '示例页面'
+    console.log('[自由画布] 加载页面配置:', res)
+
+    // 检查是否是自由画布页面 (响应拦截器已返回 data)
+    if (res && res.configVersion === 10) {
+      // 从 configJson 解析自由画布配置
+      const config = JSON.parse(res.configJson || '{}')
+
+      // ✅ 验证配置是否有效（必须包含 pageInfo）
+      if (!config.pageInfo || Object.keys(config).length === 0) {
+        console.warn('[自由画布] 配置为空或无效，创建默认配置')
+        pageConfig.value = createEmptyPageConfig()
+        // 保留数据库中的基本信息
+        if (pageConfig.value.pageInfo) {
+          pageConfig.value.pageInfo.pageName = res.pageName || '新页面'
+          pageConfig.value.pageInfo.pageCode = res.pageCode || `page_${id}`
+          pageConfig.value.pageInfo.pageType = res.pageType || 'custom'
+          pageConfig.value.pageInfo.published = res.published || false
+          pageConfig.value.pageInfo.routePath = res.routePath
+        }
+      } else {
+        console.log('[自由画布] 解析配置成功:', config)
+        pageConfig.value = config
+      }
+    } else if (res && res.configJson) {
+      // 尝试从 configJson 解析配置
+      try {
+        const config = JSON.parse(res.configJson)
+        if (config.version === 'free-canvas') {
+          console.log('[自由画布] 检测到自由画布配置:', config)
+          pageConfig.value = config
+        } else {
+          console.warn('[自由画布] 配置版本不匹配:', config.version)
+          // 创建空配置，但保留基本信息
+          pageConfig.value = createEmptyPageConfig()
+          if (pageConfig.value.pageInfo && res.pageName) {
+            pageConfig.value.pageInfo.pageName = res.pageName
+          }
+          if (pageConfig.value.pageInfo && res.pageCode) {
+            pageConfig.value.pageInfo.pageCode = res.pageCode
+          }
+        }
+      } catch (e) {
+        console.error('[自由画布] 解析配置 JSON 失败:', e)
+        pageConfig.value = createEmptyPageConfig()
+        if (pageConfig.value.pageInfo && res.pageName) {
+          pageConfig.value.pageInfo.pageName = res.pageName || `示例页面_${id}`
+        }
+        if (pageConfig.value.pageInfo) {
+          pageConfig.value.pageInfo.pageCode = res.pageCode || `page_${id}`
+        }
+      }
+    } else {
+      // 不是自由画布页面，创建空配置
+      console.warn('[自由画布] 不是自由画布页面，创建空配置')
+      pageConfig.value = createEmptyPageConfig()
+      if (pageConfig.value.pageInfo && res.pageName) {
+        pageConfig.value.pageInfo.pageName = res.pageName || `示例页面_${id}`
+      }
+      if (pageConfig.value.pageInfo) {
+        pageConfig.value.pageInfo.pageCode = res.pageCode || `page_${id}`
+      }
+    }
   } catch (error: any) {
+    console.error('[自由画布] 加载页面失败:', error)
     ElMessage.error('加载页面失败: ' + (error.message || '未知错误'))
+    // 创建空配置作为降级处理
+    pageConfig.value = createEmptyPageConfig()
+    if (pageConfig.value.pageInfo) {
+      pageConfig.value.pageInfo.pageName = `页面_${id}`
+      pageConfig.value.pageInfo.pageCode = `page_${id}`
+    }
   }
 }
 
@@ -156,7 +231,9 @@ async function loadPageConfig(id: number) {
  * 处理返回
  */
 function handleBack() {
-  router.push('/lowcode-v6/PageManageV6')
+  // 如果有未保存的更改，可以提示用户
+  // router.push('/lowcode-v6/PageManageV6')
+  router.back()  // 使用 router.back() 更灵活
 }
 
 /**
@@ -228,28 +305,60 @@ async function handleReset() {
 async function handleSave() {
   if (!pageConfig.value) return
 
+  // 确保 pageInfo 存在
+  if (!pageConfig.value.pageInfo) {
+    ElMessage.warning('页面配置错误，缺少 pageInfo')
+    return
+  }
+
   if (!pageConfig.value.pageInfo.pageName) {
     ElMessage.warning('请输入页面名称')
     return
   }
 
+  if (!pageConfig.value.pageInfo.pageCode) {
+    ElMessage.warning('请输入页面编码')
+    return
+  }
+
   saving.value = true
   try {
-    // TODO: 调用 API 保存页面配置
-    // if (pageId.value) {
-    //   await updateFreeCanvasPage(pageId.value, pageConfig.value)
-    // } else {
-    //   const result = await createFreeCanvasPage(pageConfig.value)
-    //   pageId.value = result.id
-    // }
+    // 构造后端数据格式
+    const backendData = {
+      pageName: pageConfig.value.pageInfo.pageName,
+      pageCode: pageConfig.value.pageInfo.pageCode,
+      pageType: pageConfig.value.pageInfo.pageType || 'custom',
+      layoutType: 'free-canvas',  // 自由画布布局类型
+      configJson: JSON.stringify(pageConfig.value),  // 将完整配置序列化为 JSON
+      configVersion: 10,  // 使用特殊版本号标识自由画布
+      published: pageConfig.value.pageInfo.published || false,
+      routePath: pageConfig.value.pageInfo.routePath,
+      remark: '自由画布页面'
+    }
 
-    // 模拟保存
-    await new Promise(resolve => setTimeout(resolve, 500))
+    if (pageId.value && pageId.value > 0) {
+      // 更新现有页面
+      await request({
+        url: `/page/${pageId.value}`,
+        method: 'put',
+        data: backendData
+      })
+      console.log('[自由画布] 更新页面成功:', pageId.value)
+    } else {
+      // 创建新页面
+      const res = await request({
+        url: '/page',
+        method: 'post',
+        data: backendData
+      })
+      pageId.value = res.id  // 保存返回的 pageId
+      console.log('[自由画布] 创建页面成功:', pageId.value)
+    }
 
-    console.log('保存配置:', pageConfig.value)
-    ElMessage.success('保存成功')
+    ElMessage.success(pageId.value > 0 ? '更新成功' : '保存成功')
   } catch (error: any) {
-    ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+    console.error('[自由画布] 保存失败:', error)
+    ElMessage.error('保存失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   } finally {
     saving.value = false
   }
@@ -261,24 +370,43 @@ async function handleSave() {
 async function handlePublish() {
   if (!pageConfig.value) return
 
+  // 确保 pageInfo 存在
+  if (!pageConfig.value.pageInfo) {
+    ElMessage.warning('页面配置错误，缺少 pageInfo')
+    return
+  }
+
   if (!pageConfig.value.pageInfo.pageName) {
     ElMessage.warning('请输入页面名称')
     return
   }
 
+  if (!pageConfig.value.pageInfo.pageCode) {
+    ElMessage.warning('请输入页面编码')
+    return
+  }
+
+  // 先保存
+  if (!pageId.value || pageId.value < 0) {
+    await handleSave()
+  }
+
   publishing.value = true
   try {
-    // TODO: 调用 API 发布页面
-    // await publishFreeCanvasPage(pageId.value || 0, pageConfig.value)
-
-    // 模拟发布
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // 调用 API 发布页面
+    await request({
+      url: `/page/${pageId.value}/publish`,
+      method: 'post',
+      data: {
+        routePath: pageConfig.value.pageInfo.routePath || `/free-canvas/${pageConfig.value.pageInfo.pageCode}`
+      }
+    })
 
     pageConfig.value.pageInfo.published = true
-    console.log('发布配置:', pageConfig.value)
     ElMessage.success('发布成功')
   } catch (error: any) {
-    ElMessage.error('发布失败: ' + (error.message || '未知错误'))
+    console.error('[自由画布] 发布失败:', error)
+    ElMessage.error('发布失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   } finally {
     publishing.value = false
   }
@@ -329,6 +457,10 @@ async function handlePublish() {
 
     .page-name-input {
       width: 200px;
+    }
+
+    .page-code-input {
+      width: 180px;
     }
   }
 

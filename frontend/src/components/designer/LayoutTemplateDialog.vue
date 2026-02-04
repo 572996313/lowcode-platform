@@ -60,14 +60,15 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Check } from '@element-plus/icons-vue'
-import type { V3Config } from '@/api/page'
+import type { NewPageConfig } from '@/types/page-v6'
+import type { ToolbarConfig, SearchConfig, TableConfig } from '@/types/page-v6'
 
 interface TemplateInfo {
   code: string
   name: string
   description: string
   preview: string
-  config: Partial<V3Config>
+  config: Partial<NewPageConfig>
 }
 
 interface Props {
@@ -105,26 +106,42 @@ const standardTemplates: TemplateInfo[] = [
       </div>
     `,
     config: {
-      version: 2,
+      version: 'v6',
+      pageName: '',
+      pageCode: '',
+      description: '标准列表页（查询区 + 工具栏 + 表格）',
       layoutType: 'top-bottom',
-      areas: [
-        {
-          id: 'search',
-          type: 'search',
-          name: '查询区',
-          enabled: true,
-          required: false,
-          config: { title: '查询条件', fields: [] }
-        },
-        {
-          id: 'content',
-          type: 'content',
-          name: '内容区',
-          enabled: true,
-          required: false,
-          config: { componentType: 'table', configId: null, showToolbar: true }
-        }
-      ]
+      toolbar: {
+        enabled: true,
+        align: 'left',
+        buttons: []
+      } as ToolbarConfig,
+      search: {
+        enabled: true,
+        collapsible: true,
+        collapsed: false,
+        labelWidth: 80,
+        labelPosition: 'left',
+        fields: [],
+        layout: { span: 6, gap: 16 }
+      } as SearchConfig,
+      table: {
+        columns: [],
+        stripe: true,
+        border: false,
+        highlightCurrentRow: false,
+        showHeader: true,
+        pagination: true,
+        pageSize: 10,
+        pageSizes: [10, 20, 50, 100],
+        rowActions: []
+      } as TableConfig,
+      globalConfig: {
+        pageSize: 10,
+        pageSizes: [10, 20, 50, 100],
+        stripe: true,
+        border: false
+      }
     }
   },
   {
@@ -141,34 +158,42 @@ const standardTemplates: TemplateInfo[] = [
       </div>
     `,
     config: {
-      version: 2,
+      version: 'v6',
+      pageName: '',
+      pageCode: '',
+      description: '左树右表布局（左侧树形导航 + 右侧查询区 + 表格）',
       layoutType: 'tree-table',
-      areas: [
-        {
-          id: 'tree',
-          type: 'tree',
-          name: '树形区',
-          enabled: true,
-          required: false,
-          config: { title: '分类树', dataUrl: '' }
-        },
-        {
-          id: 'search',
-          type: 'search',
-          name: '查询区',
-          enabled: true,
-          required: false,
-          config: { title: '查询条件', fields: [] }
-        },
-        {
-          id: 'content',
-          type: 'content',
-          name: '内容区',
-          enabled: true,
-          required: false,
-          config: { componentType: 'table', configId: null }
-        }
-      ]
+      toolbar: {
+        enabled: true,
+        align: 'left',
+        buttons: []
+      } as ToolbarConfig,
+      search: {
+        enabled: true,
+        collapsible: true,
+        collapsed: false,
+        labelWidth: 80,
+        labelPosition: 'left',
+        fields: [],
+        layout: { span: 6, gap: 16 }
+      } as SearchConfig,
+      table: {
+        columns: [],
+        stripe: true,
+        border: false,
+        highlightCurrentRow: false,
+        showHeader: true,
+        pagination: true,
+        pageSize: 10,
+        pageSizes: [10, 20, 50, 100],
+        rowActions: []
+      } as TableConfig,
+      globalConfig: {
+        pageSize: 10,
+        pageSizes: [10, 20, 50, 100],
+        stripe: true,
+        border: false
+      }
     }
   }
 ]

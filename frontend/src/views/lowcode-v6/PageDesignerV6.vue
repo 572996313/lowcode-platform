@@ -6,6 +6,18 @@
         <el-button :icon="ArrowLeft" @click="handleBack">返回</el-button>
         <el-divider direction="vertical" />
         <span class="page-title">{{ pageTitle }}</span>
+        <el-input
+          v-model="pageConfig.pageName"
+          placeholder="页面名称"
+          size="small"
+          style="width: 200px; margin-left: 12px;"
+        />
+        <el-input
+          v-model="pageConfig.pageCode"
+          placeholder="页面编码"
+          size="small"
+          style="width: 180px; margin-left: 8px;"
+        />
       </div>
       <div class="header-right">
         <el-button :icon="View" @click="handlePreview">预览</el-button>
@@ -87,6 +99,8 @@ import {
   createEmptyPageConfig,
   generateId
 } from '@/types/page-v6'
+import { getPage, updatePage, createPage, publishPage } from '@/api/page'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -101,32 +115,67 @@ const selectedObject = ref<SelectedObject>(null)
 const previewVisible = ref(false)
 const isFullscreen = ref(false)
 
+// 页面 ID
+const pageId = ref<number | null>(null)
+
 // 页面标题
 const pageTitle = computed(() => {
-  const pageId = route.params.id
-  return pageId ? '编辑页面' : '新建页面'
+  return pageId.value ? '编辑页面' : '新建页面'
 })
 
 // 初始化
 onMounted(async () => {
-  const pageId = route.params.id as string
-  if (pageId) {
-    await loadPageConfig(parseInt(pageId))
+  const id = route.params.pageId as string
+  if (id && id !== 'new') {
+    pageId.value = parseInt(id)
+    await loadPageConfig(pageId.value)
   }
 })
 
 /**
  * 加载页面配置
  */
-async function loadPageConfig(pageId: number) {
+async function loadPageConfig(id: number) {
   try {
-    // TODO: 调用 API 加载配置
-    // const res = await getPageConfig(pageId)
-    // pageConfig.value = res.data
-    console.log('加载页面配置:', pageId)
-  } catch (error) {
-    ElMessage.error('加载页面配置失败')
-    console.error(error)
+    const res = await request({
+      url: `/page/${id}`,
+      method: 'get'
+    })
+
+    console.log('[PageDesignerV6] 加载页面配置:', res)
+
+    // 检查是否是内置布局页面（不是自由画布）
+    if (res && res.configJson) {
+      try {
+        const config = JSON.parse(res.configJson)
+        if (config.version === 'v6') {
+          console.log('[PageDesignerV6] 检测到 V6 配置:', config)
+          pageConfig.value = config
+        } else {
+          console.warn('[PageDesignerV6] 配置版本不匹配:', config.version)
+          // 创建空配置，但保留基本信息
+          pageConfig.value = createEmptyPageConfig()
+          pageConfig.value.pageName = res.pageName || `示例页面_${id}`
+          pageConfig.value.pageCode = res.pageCode || `page_${id}`
+        }
+      } catch (e) {
+        console.error('[PageDesignerV6] 解析配置 JSON 失败:', e)
+        pageConfig.value = createEmptyPageConfig()
+        pageConfig.value.pageName = res.pageName || `示例页面_${id}`
+        pageConfig.value.pageCode = res.pageCode || `page_${id}`
+      }
+    } else {
+      // 不是 V6 页面，创建空配置
+      console.warn('[PageDesignerV6] 不是 V6 页面，创建空配置')
+      pageConfig.value = createEmptyPageConfig()
+      pageConfig.value.pageName = res.pageName || `示例页面_${id}`
+      pageConfig.value.pageCode = res.pageCode || `page_${id}`
+    }
+  } catch (error: any) {
+    console.error('[PageDesignerV6] 加载页面失败:', error)
+    ElMessage.error('加载页面失败: ' + (error.message || '未知错误'))
+    // 创建空配置作为降级处理
+    pageConfig.value = createEmptyPageConfig()
   }
 }
 
@@ -167,14 +216,42 @@ async function handleSave() {
       return
     }
 
-    // TODO: 调用 API 保存配置
-    // const res = await savePageConfig(pageConfig.value)
-    // pageConfig.value.pageId = res.data.pageId
+    // 构造后端数据格式
+    const backendData = {
+      pageName: pageConfig.value.pageName,
+      pageCode: pageConfig.value.pageCode,
+      pageType: 'list',  // V6 默认是列表页
+      layoutType: 'top-bottom',  // 内置布局
+      configJson: JSON.stringify(pageConfig.value),  // 将完整配置序列化为 JSON
+      configVersion: 6,  // V6 版本号
+      published: pageConfig.value.published || false,
+      routePath: pageConfig.value.routePath,
+      remark: pageConfig.value.description || 'V6 列表页'
+    }
 
-    ElMessage.success('保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败')
-    console.error(error)
+    if (pageId.value && pageId.value > 0) {
+      // 更新现有页面
+      await request({
+        url: `/page/${pageId.value}`,
+        method: 'put',
+        data: backendData
+      })
+      console.log('[PageDesignerV6] 更新页面成功:', pageId.value)
+      ElMessage.success('更新成功')
+    } else {
+      // 创建新页面
+      const res = await request({
+        url: '/page',
+        method: 'post',
+        data: backendData
+      })
+      pageId.value = res.data  // 保存返回的 pageId
+      console.log('[PageDesignerV6] 创建页面成功:', pageId.value)
+      ElMessage.success('保存成功')
+    }
+  } catch (error: any) {
+    console.error('[PageDesignerV6] 保存失败:', error)
+    ElMessage.error('保存失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
 }
 
@@ -183,6 +260,11 @@ async function handleSave() {
  */
 async function handlePublish() {
   try {
+    // 先保存
+    if (!pageId.value || pageId.value < 0) {
+      await handleSave()
+    }
+
     await ElMessageBox.confirm(
       '发布后页面将正式生效，是否继续？',
       '确认发布',
@@ -191,15 +273,21 @@ async function handlePublish() {
       }
     )
 
-    // TODO: 调用 API 发布
-    // await publishPage(pageConfig.value.pageId!)
+    // 调用 API 发布页面
+    await request({
+      url: `/page/${pageId.value}/publish`,
+      method: 'post',
+      data: {
+        routePath: pageConfig.value.routePath || `/pages/${pageConfig.value.pageCode}`
+      }
+    })
 
     pageConfig.value.published = true
     ElMessage.success('发布成功')
-  } catch (error) {
+  } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('发布失败')
-      console.error(error)
+      console.error('[PageDesignerV6] 发布失败:', error)
+      ElMessage.error('发布失败: ' + (error.response?.data?.message || error.message || '未知错误'))
     }
   }
 }

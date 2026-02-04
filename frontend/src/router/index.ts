@@ -25,7 +25,7 @@ const staticRoutes: RouteRecordRaw[] = [
       {
         path: 'page/preview/:id',
         name: 'PagePreview',
-        component: () => import('@/views/lowcode-v6/PageRenderV6.vue'),
+        component: () => import('@/views/lowcode-v6/SmartPageRender.vue'),
         meta: { title: '页面预览', hideInMenu: true }
       },
       // 自由画布设计器
@@ -34,6 +34,13 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'FreeCanvasDesigner',
         component: () => import('@/views/lowcode-v6/FreeCanvasDesigner.vue'),
         meta: { title: '自由画布设计器', hideInMenu: true, fullscreen: true }
+      },
+      // 内置布局设计器（V6 版本）
+      {
+        path: 'lowcode-v6/PageDesignerV6/:pageId',
+        name: 'PageDesignerV6',
+        component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
+        meta: { title: '页面设计器', hideInMenu: true, fullscreen: true }
       }
     ]
   }
@@ -70,10 +77,10 @@ export const addDynamicRoutes = async () => {
           component = getComponent(menu.componentPath)
         }
 
-        // 如果找不到组件，但有 pageId，则使用 PageRenderV6 渲染低代码页面
+        // 如果找不到组件，但有 pageId，则使用 SmartPageRender 智能渲染低代码页面
         if (!component && menu.pageId) {
-          component = getComponent('/views/lowcode-v6/PageRenderV6.vue')
-          console.log(`✓ 菜单 ${menu.menuName} 使用 PageRenderV6 渲染页面 pageId=${menu.pageId}`)
+          component = getComponent('/views/lowcode-v6/SmartPageRender.vue')
+          console.log(`✓ 菜单 ${menu.menuName} 使用 SmartPageRender 智能渲染页面 pageId=${menu.pageId}`)
         }
 
         // 如果找不到组件也没有 pageId，使用占位组件

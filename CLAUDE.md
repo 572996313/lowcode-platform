@@ -243,6 +243,124 @@ docker exec <容器名> mysql -uroot -p<密码> --default-character-set=utf8mb4 
 4. **API 调用**：使用 `src/utils/request.ts` 封装的 request 对象（get、post、put、delete），会自动处理 JWT token 和响应拦截
 5. **状态管理**：使用 Pinia stores（如 `useMenuStore()`），支持持久化到 localStorage
 
+### API 响应数据结构规范
+
+**核心原则：响应拦截器在 `code === 200` 时已自动解包返回 `data`，调用方直接获取业务数据，无需再次访问 `.data`。**
+
+**后端统一响应格式（Result<T>）：**
+```java
+{
+  "code": 200,
+  "message": "success",
+  "data": { ... }  // 实际业务数据
+}
+```
+
+**前端响应拦截器行为（`src/utils/request.ts`）：**
+```typescript
+// 当 code === 200 时，拦截器返回 data
+service.interceptors.response.use((response) => {
+  const { code, message, data } = response.data
+  if (code === 200) {
+    return data  // ✅ 直接返回 data，不是 response.data
+  }
+  // ...
+})
+```
+
+**API 调用后的返回值类型：**
+
+| 调用方式 | 返回值 | 类型 |
+|---------|--------|------|
+| 单个对象 | `{ id: 1, name: '...' }` | `T` |
+| 列表数据 | `[ { id: 1, ... }, { id: 2, ... } ]` | `T[]` |
+| 分页数据 | `{ records: [...], total: 100, ... }` | `PageResult<T>` |
+
+**❌ 错误写法（二次访问 .data）：**
+```typescript
+// 错误：访问 res.data（data 已经被拦截器解包）
+const res = await request.get(`/page/${id}`)
+console.log(res.data.configVersion)  // undefined
+console.log(res.data.pageName)       // undefined
+```
+
+**✅ 正确写法（直接访问字段）：**
+```typescript
+// 正确：res 已经是业务数据对象
+const res = await request.get(`/page/${id}`)
+console.log(res.configVersion)  // 10
+console.log(res.pageName)       // '页面名称'
+
+// 解析 JSON 字段
+const config = JSON.parse(res.configJson || '{}')
+console.log(config.version)       // 'free-canvas'
+```
+
+**分页数据处理：**
+```typescript
+// 正确：直接访问分页信息
+const result = await request.get('/page/list', { page: 1, size: 10 })
+console.log(result.records)  // 数据列表
+console.log(result.total)    // 总条数
+console.log(result.current)  // 当前页
+
+// 错误：不要访问 result.data.records
+console.log(result.data.records)  // undefined
+```
+
+**错误处理模式：**
+```typescript
+try {
+  const data = await request.get('/api/endpoint')
+  // data 是直接的业务数据，无需 .data
+  console.log(data.fieldName)
+} catch (error: any) {
+  // error.message 已经被拦截器处理
+  console.error('请求失败:', error.message)
+  ElMessage.error(error.message)
+}
+```
+
+**类型定义建议：**
+```typescript
+// 在 API 文件中定义明确的返回类型
+interface PageConfigResponse {
+  id: number
+  pageName: string
+  pageCode: string
+  configVersion?: number
+  configJson?: string
+  // ...
+}
+
+export async function getPageConfig(id: number): Promise<PageConfigResponse> {
+  return request.get(`/page/${id}`)
+}
+
+// 使用时获得类型提示
+const page = await getPageConfig(1)
+console.log(page.pageName)      // ✅ 类型安全
+console.log(page.data.pageName)   // ❌ TypeScript 会报错
+```
+
+**调试技巧：**
+```typescript
+// 遇到数据问题时，先打印返回值
+const res = await request.get('/api/endpoint')
+console.log('API 返回值:', res)
+console.log('API 返回值类型:', typeof res)
+console.log('包含字段:', Object.keys(res))
+
+// 判断返回值结构
+if ('records' in res && 'total' in res) {
+  console.log('这是分页数据')
+} else if ('id' in res) {
+  console.log('这是单个对象')
+} else if (Array.isArray(res)) {
+  console.log('这是数组')
+}
+```
+
 ### 低代码页面开发
 1. **页面设计流程**：
    - 在 PageDesigner 中设计页面布局（选择布局类型、配置区域）
@@ -348,6 +466,21 @@ public Result<PageConfig> getPage(@PathVariable Long id) {
   - 方案一：给实体类字段添加 `@TableField(exist = false)` 注解（非数据库字段）
   - 方案二：给数据库表添加对应字段
 - **预防**：参考下面「实体类与数据库表一致性规范」
+
+**问题**：API 返回数据访问不到（如 `res.data.configVersion` 为 `undefined`）
+- **原因**：响应拦截器在 `code === 200` 时已返回 `data`，调用方错误地二次访问 `.data`
+- **解决**：直接访问业务字段，如 `res.configVersion` 而非 `res.data.configVersion`
+- **预防**：参考「API 响应数据结构规范」，记住拦截器已自动解包
+- **示例**：
+  ```typescript
+  // ❌ 错误
+  const res = await request.get(`/page/${id}`)
+  console.log(res.data.configVersion)  // undefined
+
+  // ✅ 正确
+  const res = await request.get(`/page/${id}`)
+  console.log(res.configVersion)  // 10
+  ```
 
 ## 后端开发专项规范
 
