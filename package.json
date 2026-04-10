@@ -1,0 +1,14 @@
+{
+  "name": "lowcode-platform",
+  "version": "1.0.0",
+  "description": "低代码平台 - 前后端一体化开发环境",
+  "scripts": {
+    "dev": "node start-dev.js",
+    "dev:frontend": "node start-dev.js --frontend",
+    "dev:backend": "node start-dev.js --backend",
+    "dev:no-check": "node start-dev.js --no-check"
+  },
+  "keywords": ["lowcode", "vue", "spring-boot"],
+  "author": "",
+  "license": "MIT"
+}

@@ -41,7 +41,7 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'PageDesignerV6',
         component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
         meta: { title: '页面设计器', hideInMenu: true, fullscreen: true }
-      }
+      },
     ]
   }
 ]

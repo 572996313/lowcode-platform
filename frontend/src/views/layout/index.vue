@@ -57,7 +57,11 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>个人中心</el-dropdown-item>
+                <el-dropdown-item @click="handleRefreshMenu">
+                  <el-icon><Refresh /></el-icon>
+                  刷新菜单
+                </el-dropdown-item>
+                <el-dropdown-item divided>个人中心</el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -105,6 +109,13 @@ const handleLogout = () => {
   localStorage.removeItem('token')
   menuStore.reset()
   router.push('/login')
+}
+
+const handleRefreshMenu = async () => {
+  menuStore.loaded = false
+  await menuStore.loadMenus()
+  // 刷新当前页面
+  router.go(0)
 }
 
 onMounted(() => {

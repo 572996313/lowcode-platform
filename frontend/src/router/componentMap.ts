@@ -36,6 +36,7 @@ export const componentMap: Record<string, () => Promise<any>> = {
   '/views/lowcode/TemplateTest.vue': () => import('@/views/lowcode/TemplateTest.vue'),
   '/views/system/DictManage.vue': () => import('@/views/system/DictManage.vue'),
   '/views/system/MenuManage.vue': () => import('@/views/system/MenuManage.vue'),
+  '/views/dict/DictManage.vue': () => import('@/views/dict/DictManage.vue'),
 }
 
 // 获取组件
