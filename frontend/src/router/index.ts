@@ -21,6 +21,13 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/home/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
       },
+      // 表格标准页面
+      {
+        path: 'table-standard',
+        name: 'TableStandardPage',
+        component: () => import('@/views/lowcode/TableStandardPage.vue'),
+        meta: { title: '表格标准页面', icon: 'Grid' }
+      },
       // 页面预览（V6 运行时 - 不显示在菜单中）
       {
         path: 'page/preview/:id',

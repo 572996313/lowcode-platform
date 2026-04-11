@@ -32,6 +32,7 @@ export const componentMap: Record<string, () => Promise<any>> = {
   '/views/lowcode/TableList.vue': () => import('@/views/lowcode/TableList.vue'),
   '/views/lowcode/TableManage.vue': () => import('@/views/lowcode/TableManage.vue'),
   '/views/lowcode/TableStyleTemplateManage.vue': () => import('@/views/lowcode/TableStyleTemplateManage.vue'),
+  '/views/lowcode/TableStandardPage.vue': () => import('@/views/lowcode/TableStandardPage.vue'),
   '/views/lowcode/TemplateManage.vue': () => import('@/views/lowcode/TemplateManage.vue'),
   '/views/lowcode/TemplateTest.vue': () => import('@/views/lowcode/TemplateTest.vue'),
   '/views/system/DictManage.vue': () => import('@/views/system/DictManage.vue'),

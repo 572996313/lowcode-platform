@@ -29,6 +29,10 @@
           <el-icon><HomeFilled /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
+        <el-menu-item index="/table-standard">
+          <el-icon><Grid /></el-icon>
+          <template #title>表格标准页面</template>
+        </el-menu-item>
 
         <!-- 动态菜单 - 使用递归组件支持多层级 -->
         <SidebarItem :menus="sidebarMenus" />
