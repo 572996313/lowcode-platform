@@ -2,7 +2,7 @@
  * 组件相关类型定义
  */
 
-import type { FormConfig, TableConfig, ComponentRef } from './template'
+import type { ComponentRef } from './template'
 
 /**
  * 拖拽状态

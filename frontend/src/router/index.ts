@@ -28,6 +28,27 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/lowcode/TableStandardPage.vue'),
         meta: { title: '表格标准页面', icon: 'Grid' }
       },
+      // 表单标准页面
+      {
+        path: 'form-standard',
+        name: 'FormStandardPage',
+        component: () => import('@/views/lowcode/FormStandardPage.vue'),
+        meta: { title: '表单标准页面', icon: 'Document' }
+      },
+      // 表格配置器
+      {
+        path: 'table-standard-configurator',
+        name: 'TableStandardConfigurator',
+        component: () => import('@/views/lowcode/TableStandardConfigurator.vue'),
+        meta: { title: '表格配置器', icon: 'Setting' }
+      },
+      // 表单配置器
+      {
+        path: 'form-standard-configurator',
+        name: 'FormStandardConfigurator',
+        component: () => import('@/views/lowcode/FormStandardConfigurator.vue'),
+        meta: { title: '表单配置器', icon: 'SetUp' }
+      },
       // 页面预览（V6 运行时 - 不显示在菜单中）
       {
         path: 'page/preview/:id',
@@ -152,8 +173,12 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // 检查 token
-  const hasToken = localStorage.getItem('token')
+  // 检查 token（开发模式自动补充 mock token）
+  let hasToken = localStorage.getItem('token')
+  if (!hasToken && import.meta.env.DEV) {
+    localStorage.setItem('token', 'mock-token')
+    hasToken = 'mock-token'
+  }
 
   if (!hasToken) {
     next('/login')

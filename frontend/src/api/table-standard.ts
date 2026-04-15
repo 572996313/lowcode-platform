@@ -1,4 +1,5 @@
 import { request } from '@/utils/request'
+import { registerConfig } from '@/utils/configRegistry'
 
 // ==========================================
 // 类型定义 - 页面配置接口
@@ -84,6 +85,8 @@ export interface ActionButton {
   action: string
   /** 显示条件表达式字段名，该字段值为 true 时显示 */
   showWhen?: string
+  /** 动作配置 */
+  actionConfig?: ButtonActionConfig
 }
 
 /** 表单字段类型 */
@@ -115,6 +118,8 @@ export interface FormFieldConfig {
   inactiveValue?: any
   /** label 宽度 */
   labelWidth?: string
+  /** 栅格占比（1-24） */
+  span?: number
 }
 
 /** 表单校验规则 */
@@ -139,6 +144,27 @@ export interface TableConfig {
   showSelection?: boolean
 }
 
+/** 选择模式（提交/审批等操作需要选择行） */
+export type SelectionMode = 'none' | 'single' | 'multiple'
+
+/** 按钮动作配置（定义按钮点击后发生什么） */
+export interface ButtonActionConfig {
+  /** 动作类型 */
+  type: 'openForm' | 'openTable' | 'route' | 'submit' | 'api' | 'custom'
+  /** 目标配置编码（openForm/openTable 时，从 configRegistry 获取） */
+  targetCode?: string
+  /** 打开方式（openForm/openTable 时） */
+  openMode?: 'dialog' | 'drawer' | 'page'
+  /** 路由路径（route 类型） */
+  routePath?: string
+  /** 路由参数模板（支持 ${fieldName} 从行数据取值） */
+  routeQuery?: Record<string, string>
+  /** 选择模式（submit 类型：是否需要先选择行） */
+  selectionMode?: SelectionMode
+  /** 提交确认提示语 */
+  confirmText?: string
+}
+
 /** 工具栏按钮配置 */
 export interface ToolbarButton {
   /** 按钮文本 */
@@ -149,6 +175,8 @@ export interface ToolbarButton {
   icon?: string
   /** 操作标识：add / export / batchDelete / 自定义 */
   action: string
+  /** 动作配置 */
+  actionConfig?: ButtonActionConfig
 }
 
 /** 工具栏配置 */
@@ -156,6 +184,9 @@ export interface ToolbarConfig {
   /** 按钮列表 */
   buttons: ToolbarButton[]
 }
+
+/** 表单打开方式 */
+export type FormOpenMode = 'dialog' | 'drawer' | 'page'
 
 /** 页面配置（后端返回的完整页面配置） */
 export interface PageConfigResponse {
@@ -171,8 +202,6 @@ export interface PageConfigResponse {
   tableColumns: TableColumnConfig[]
   /** 表格整体配置 */
   tableConfig: TableConfig
-  /** 表单字段配置 */
-  formFields: FormFieldConfig[]
 }
 
 /** 分页结果 */
@@ -273,8 +302,13 @@ const mockPageConfig: PageConfigResponse = {
   pageName: '表格标准页面',
   toolbar: {
     buttons: [
-      { label: '新增', btnType: 'primary', icon: 'Plus', action: 'add' },
-      { label: '导出', icon: 'Download', action: 'export' }
+      {
+        label: '新增', btnType: 'primary', icon: 'Plus', action: 'add',
+        actionConfig: { type: 'openForm', targetCode: 'form_standard_demo', openMode: 'dialog' }
+      },
+      { label: '导出', icon: 'Download', action: 'export',
+        actionConfig: { type: 'custom' }
+      }
     ]
   },
   searchFields: [
@@ -291,7 +325,7 @@ const mockPageConfig: PageConfigResponse = {
   tableColumns: [
     { prop: 'name', label: '名称', width: 150 },
     { prop: 'code', label: '编码', width: 150 },
-    { prop: 'category', label: '分类', width: 120 },
+    { prop: 'category', label: '分类', width: 120, align: 'center', type: 'tag', tagConfig: { mapping: { 'A': { text: '分类A', type: '' }, 'B': { text: '分类B', type: 'success' }, 'C': { text: '分类C', type: 'warning' } } } },
     { prop: 'description', label: '描述', showOverflowTooltip: true },
     {
       prop: 'status', label: '状态', width: 100, align: 'center',
@@ -309,7 +343,10 @@ const mockPageConfig: PageConfigResponse = {
       type: 'action',
       actionConfig: {
         buttons: [
-          { label: '编辑', btnType: 'primary', size: 'small', action: 'edit' },
+          {
+            label: '编辑', btnType: 'primary', size: 'small', action: 'edit',
+            actionConfig: { type: 'openForm', targetCode: 'form_standard_demo', openMode: 'page' }
+          },
           { label: '删除', btnType: 'danger', size: 'small', action: 'delete' }
         ]
       }
@@ -321,38 +358,23 @@ const mockPageConfig: PageConfigResponse = {
     showPagination: true,
     pageSize: 10,
     pageSizes: [10, 20, 50, 100]
-  },
-  formFields: [
-    { field: 'name', label: '名称', type: 'input', placeholder: '请输入名称', required: true, rules: [{ required: true, message: '请输入名称', trigger: 'blur' }] },
-    { field: 'code', label: '编码', type: 'input', placeholder: '请输入编码（英文）', required: true, disabledOnEdit: true, rules: [{ required: true, message: '请输入编码', trigger: 'blur' }, { pattern: '^[a-zA-Z0-9_]+$', message: '编码只能包含字母、数字和下划线', trigger: 'blur' }] },
-    {
-      field: 'category', label: '分类', type: 'select', placeholder: '请选择分类', required: true,
-      rules: [{ required: true, message: '请选择分类', trigger: 'change' }],
-      options: [
-        { label: '分类A', value: '分类A' },
-        { label: '分类B', value: '分类B' },
-        { label: '分类C', value: '分类C' }
-      ]
-    },
-    { field: 'description', label: '描述', type: 'textarea', placeholder: '请输入描述', rows: 3 },
-    { field: 'status', label: '状态', type: 'switch', activeValue: 1, inactiveValue: 0 }
-  ]
+  }
 }
 
 /** Mock 数据列表 */
 const mockDataList: Record<string, any>[] = [
-  { id: 1, name: '示例数据1', code: 'DEMO_001', category: '分类A', description: '这是示例数据1的描述信息', status: 1, createTime: '2026-01-15 10:30:00' },
-  { id: 2, name: '示例数据2', code: 'DEMO_002', category: '分类B', description: '这是示例数据2的描述信息', status: 1, createTime: '2026-01-16 14:20:00' },
-  { id: 3, name: '示例数据3', code: 'DEMO_003', category: '分类A', description: '这是示例数据3的描述信息', status: 0, createTime: '2026-02-01 09:00:00' },
-  { id: 4, name: '示例数据4', code: 'DEMO_004', category: '分类C', description: '这是示例数据4的描述信息', status: 1, createTime: '2026-02-10 16:45:00' },
-  { id: 5, name: '示例数据5', code: 'DEMO_005', category: '分类B', description: '这是示例数据5的描述信息', status: 0, createTime: '2026-02-20 11:15:00' },
-  { id: 6, name: '示例数据6', code: 'DEMO_006', category: '分类A', description: '这是示例数据6的描述信息', status: 1, createTime: '2026-03-01 08:30:00' },
-  { id: 7, name: '示例数据7', code: 'DEMO_007', category: '分类C', description: '这是示例数据7的描述信息', status: 1, createTime: '2026-03-05 13:00:00' },
-  { id: 8, name: '示例数据8', code: 'DEMO_008', category: '分类B', description: '这是示例数据8的描述信息', status: 0, createTime: '2026-03-10 17:30:00' },
-  { id: 9, name: '示例数据9', code: 'DEMO_009', category: '分类A', description: '这是示例数据9的描述信息', status: 1, createTime: '2026-03-15 10:00:00' },
-  { id: 10, name: '示例数据10', code: 'DEMO_010', category: '分类C', description: '这是示例数据10的描述信息', status: 1, createTime: '2026-03-20 14:30:00' },
-  { id: 11, name: '示例数据11', code: 'DEMO_011', category: '分类B', description: '这是示例数据11的描述信息', status: 1, createTime: '2026-03-25 09:45:00' },
-  { id: 12, name: '示例数据12', code: 'DEMO_012', category: '分类A', description: '这是示例数据12的描述信息', status: 0, createTime: '2026-04-01 16:00:00' },
+  { id: 1, name: '示例数据1', code: 'DEMO_001', category: 'A', description: '这是示例数据1的描述信息', status: 1, createTime: '2026-01-15 10:30:00' },
+  { id: 2, name: '示例数据2', code: 'DEMO_002', category: 'B', description: '这是示例数据2的描述信息', status: 1, createTime: '2026-01-16 14:20:00' },
+  { id: 3, name: '示例数据3', code: 'DEMO_003', category: 'A', description: '这是示例数据3的描述信息', status: 0, createTime: '2026-02-01 09:00:00' },
+  { id: 4, name: '示例数据4', code: 'DEMO_004', category: 'C', description: '这是示例数据4的描述信息', status: 1, createTime: '2026-02-10 16:45:00' },
+  { id: 5, name: '示例数据5', code: 'DEMO_005', category: 'B', description: '这是示例数据5的描述信息', status: 0, createTime: '2026-02-20 11:15:00' },
+  { id: 6, name: '示例数据6', code: 'DEMO_006', category: 'A', description: '这是示例数据6的描述信息', status: 1, createTime: '2026-03-01 08:30:00' },
+  { id: 7, name: '示例数据7', code: 'DEMO_007', category: 'C', description: '这是示例数据7的描述信息', status: 1, createTime: '2026-03-05 13:00:00' },
+  { id: 8, name: '示例数据8', code: 'DEMO_008', category: 'B', description: '这是示例数据8的描述信息', status: 0, createTime: '2026-03-10 17:30:00' },
+  { id: 9, name: '示例数据9', code: 'DEMO_009', category: 'A', description: '这是示例数据9的描述信息', status: 1, createTime: '2026-03-15 10:00:00' },
+  { id: 10, name: '示例数据10', code: 'DEMO_010', category: 'C', description: '这是示例数据10的描述信息', status: 1, createTime: '2026-03-20 14:30:00' },
+  { id: 11, name: '示例数据11', code: 'DEMO_011', category: 'B', description: '这是示例数据11的描述信息', status: 1, createTime: '2026-03-25 09:45:00' },
+  { id: 12, name: '示例数据12', code: 'DEMO_012', category: 'A', description: '这是示例数据12的描述信息', status: 0, createTime: '2026-04-01 16:00:00' },
 ]
 
 /** Mock 分页查询逻辑 */
@@ -378,3 +400,10 @@ function mockPageQuery(params: Record<string, any>): PageResult<Record<string, a
 
   return { total, records, current, size, pages: Math.ceil(total / size) }
 }
+
+// ==========================================
+// 初始化：自动注册 mock 配置到 configRegistry
+// 这样 TableStandardPage 打开时能立即找到关联的表单配置
+// 将来接后端后，这里替换为后端 API 返回的配置
+// ==========================================
+registerConfig('table_standard_demo', '表格标准页面', 'table', mockPageConfig)

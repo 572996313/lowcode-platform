@@ -33,6 +33,18 @@
           <el-icon><Grid /></el-icon>
           <template #title>表格标准页面</template>
         </el-menu-item>
+        <el-menu-item index="/form-standard">
+          <el-icon><Document /></el-icon>
+          <template #title>表单标准页面</template>
+        </el-menu-item>
+        <el-menu-item index="/table-standard-configurator">
+          <el-icon><Setting /></el-icon>
+          <template #title>表格配置器</template>
+        </el-menu-item>
+        <el-menu-item index="/form-standard-configurator">
+          <el-icon><SetUp /></el-icon>
+          <template #title>表单配置器</template>
+        </el-menu-item>
 
         <!-- 动态菜单 - 使用递归组件支持多层级 -->
         <SidebarItem :menus="sidebarMenus" />

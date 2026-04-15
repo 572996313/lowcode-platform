@@ -11,6 +11,11 @@ import router from './router'
 import './styles/index.scss'
 import { setupDirectives } from './directives'
 
+// 确保 mock 配置在启动时注册到 configRegistry
+// （这些模块末尾有 registerConfig() 副作用调用）
+import '@/api/table-standard'
+import '@/api/form-standard'
+
 const app = createApp(App)
 
 // 注册自定义指令
