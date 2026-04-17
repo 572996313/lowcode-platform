@@ -194,21 +194,6 @@
             </template>
           </el-input>
         </el-form-item>
-        <el-form-item label="页面类型" prop="pageType">
-          <el-select v-model="formData.pageType" placeholder="请选择页面类型" style="width: 100%">
-            <el-option label="列表页" value="list" />
-            <el-option label="表单页" value="form" />
-            <el-option label="详情页" value="detail" />
-            <el-option label="自定义" value="custom" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="布局类型" prop="layoutType">
-          <el-select v-model="formData.layoutType" placeholder="请选择布局类型" style="width: 100%">
-            <el-option label="自由画布" value="free-canvas" />
-            <el-option label="上下布局" value="top-bottom" />
-            <el-option label="左右布局" value="left-right" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="描述" prop="remark">
           <el-input
             v-model="formData.remark"
@@ -295,9 +280,6 @@ const rules: FormRules = {
       trigger: 'blur'
     },
     { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
-  ],
-  pageType: [
-    { required: true, message: '请选择页面类型', trigger: 'change' }
   ]
 }
 
@@ -372,16 +354,8 @@ function handleCreate() {
 
 // ============ 设计 ============
 function handleDesign(row: any) {
-  // 根据布局类型跳转到对应的设计器
-  const layoutType = row.layoutType || 'free-canvas'
-
-  if (layoutType === 'free-canvas') {
-    // 自由画布设计器
-    router.push(`/lowcode/FreeCanvasDesigner/${row.id}`)
-  } else {
-    // 内置布局设计器（V6 版本）
-    router.push(`/lowcode-v6/PageDesignerV6/${row.id}`)
-  }
+  // 所有页面统一使用自由画布设计器
+  router.push(`/lowcode/FreeCanvasDesigner/${row.id}`)
 }
 
 // ============ 编辑 ============
@@ -425,8 +399,8 @@ async function handleSubmit() {
       const payload = {
         pageName: formData.pageName,
         pageCode: formData.pageCode,
-        pageType: formData.pageType,
-        layoutType: formData.layoutType,
+        pageType: 'custom',
+        layoutType: 'free-canvas',
         configJson: '{}',
         configTemplate: '{}',
         configVersion: 10,

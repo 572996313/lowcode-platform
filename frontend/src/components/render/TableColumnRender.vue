@@ -250,15 +250,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TableColumnV4, ActionButton } from '@/types/table'
+import type { ActionButtonLegacy } from '@/types/table'
 import type { TableColumn } from '@/api/table'
+import type { TableColumnConfig } from '@/api/table-standard'
 
 interface Props {
-  column: TableColumn | TableColumnV4
+  column: TableColumn | TableColumnConfig
 }
 
 interface Emits {
-  (e: 'action-click', action: ActionButton | any, row: any): void
+  (e: 'action-click', action: ActionButtonLegacy | any, row: any): void
 }
 
 const props = defineProps<Props>()
@@ -269,9 +270,10 @@ const isLegacyFormat = computed(() => {
   return 'columnCode' in props.column
 })
 
-// 获取 V4 格式的列配置
+// 获取 V4/标准页格式的列配置（兼容旧数据，使用 any）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const v4Column = computed(() => {
-  return props.column as TableColumnV4
+  return props.column as any
 })
 
 // ==================== 旧格式处理函数 ====================

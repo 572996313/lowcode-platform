@@ -17,7 +17,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPageConfig } from '@/api/page-v6'
 import PageRenderV6 from './PageRenderV6.vue'
-import FreeCanvasRender from './FreeCanvasRender.vue'
+import FreeCanvasRender from '@/components/render-free-canvas/FreeCanvasRender.vue'
 import type { NewPageConfig } from '@/types/page-v6'
 import type { FreeCanvasPageConfig } from '@/types/page-free-canvas'
 
@@ -112,7 +112,8 @@ const rendererComponent = computed(() => {
  */
 const componentProps = computed(() => {
   return {
-    pageConfig: pageConfig.value,
+    config: pageConfig.value,
+    pageId: getPageIdFromRoute() || undefined,
     ...route.meta
   }
 })

@@ -30,7 +30,7 @@ export interface TableConfig {
   columns?: TableColumn[]
 }
 
-// 表格列接口
+// 表格列接口（后端数据库映射）
 export interface TableColumn {
   id?: number
   tableId?: number
@@ -41,19 +41,11 @@ export interface TableColumn {
   width?: number
   minWidth?: number
   sortable?: boolean
-  sortOrders?: string
   fixed?: string
   align?: string
-  headerAlign?: string
-  resizable?: boolean
   showOverflowTooltip?: boolean
-  formatterType?: string
-  formatterConfig?: string
-  dictCode?: string
   sortOrder?: number
   visible?: boolean
-  export?: boolean
-  propsJson?: string
 }
 
 // 分页结果

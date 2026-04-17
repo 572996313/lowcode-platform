@@ -19,6 +19,11 @@ public class Result<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 是否成功
+     */
+    private Boolean success;
+
+    /**
      * 状态码
      */
     private Integer code;
@@ -43,6 +48,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> success() {
         return Result.<T>builder()
+                .success(true)
                 .code(200)
                 .message("操作成功")
                 .timestamp(System.currentTimeMillis())
@@ -54,6 +60,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> success(T data) {
         return Result.<T>builder()
+                .success(true)
                 .code(200)
                 .message("操作成功")
                 .data(data)
@@ -66,6 +73,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> success(String message, T data) {
         return Result.<T>builder()
+                .success(true)
                 .code(200)
                 .message(message)
                 .data(data)
@@ -78,6 +86,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> fail(String message) {
         return Result.<T>builder()
+                .success(false)
                 .code(500)
                 .message(message)
                 .timestamp(System.currentTimeMillis())
@@ -89,6 +98,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> fail(Integer code, String message) {
         return Result.<T>builder()
+                .success(false)
                 .code(code)
                 .message(message)
                 .timestamp(System.currentTimeMillis())

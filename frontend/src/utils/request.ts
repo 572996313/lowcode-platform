@@ -26,9 +26,9 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
-    const { code, message, data } = response.data
+    const { code, success, message, data } = response.data
 
-    if (code === 200) {
+    if (code === 200 || success === true) {
       return data
     } else {
       ElMessage.error(message || '请求失败')

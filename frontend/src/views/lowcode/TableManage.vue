@@ -54,11 +54,6 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="tableName" label="表格名称" min-width="150" />
         <el-table-column prop="tableCode" label="表格编码" min-width="150" />
-        <el-table-column prop="sourceTableId" label="关联表" width="120">
-          <template #default="{ row }">
-            {{ getTableName(row.sourceTableId) }}
-          </template>
-        </el-table-column>
         <el-table-column prop="apiUrl" label="API地址" min-width="200" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -67,9 +62,19 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="列数量" width="100">
+        <el-table-column label="搜索字段" width="90" align="center">
           <template #default="{ row }">
-            {{ row.columns?.length || 0 }}
+            {{ getConfigSummary(row).searchCount }}
+          </template>
+        </el-table-column>
+        <el-table-column label="工具栏" width="80" align="center">
+          <template #default="{ row }">
+            {{ getConfigSummary(row).buttonCount }}
+          </template>
+        </el-table-column>
+        <el-table-column label="列数量" width="80" align="center">
+          <template #default="{ row }">
+            {{ getConfigSummary(row).columnCount }}
           </template>
         </el-table-column>
         <el-table-column label="分页" width="80">
@@ -80,26 +85,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" link @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
-            </el-button>
-            <el-button
-              type="success"
-              size="small"
-              link
-              @click="handleColumnBinding(row)"
-            >
-              <el-icon><Link /></el-icon>列绑定
-            </el-button>
-            <el-button
-              type="warning"
-              size="small"
-              link
-              @click="handleStyleTemplate(row)"
-            >
-              <el-icon><Brush /></el-icon>样式模板
+              <el-icon><Edit /></el-icon>设计
             </el-button>
             <el-button type="danger" size="small" link @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
@@ -121,42 +110,6 @@
         />
       </div>
     </div>
-
-    <!-- 样式模板选择对话框 -->
-    <el-dialog
-      v-model="templateDialogVisible"
-      title="选择样式模板"
-      width="500px"
-    >
-      <el-form :model="templateForm" label-width="100px">
-        <el-form-item label="当前模板">
-          <span>{{ getCurrentTemplateName(rowStyleTemplate?.styleTemplateId) }}</span>
-        </el-form-item>
-        <el-form-item label="选择模板">
-          <el-select v-model="templateForm.styleTemplateId" placeholder="请选择样式模板" style="width: 100%">
-            <el-option label="不使用模板" :value="null" />
-            <el-option
-              v-for="template in styleTemplates"
-              :key="template.id"
-              :label="template.templateName"
-              :value="template.id"
-            >
-              <span>{{ template.templateName }}</span>
-              <span style="color: var(--el-text-color-secondary); font-size: 12px; margin-left: 8px">
-                {{ template.templateCode }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="模板描述">
-          <span style="color: var(--el-text-color-secondary)">{{ getSelectedTemplateDesc() }}</span>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="templateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveStyleTemplate">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -164,9 +117,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Link, Brush } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { getTableList, deleteTable, updateTable, type TableConfig } from '@/api/table'
-import { getAllTableStyleTemplates, type TableStyleTemplate } from '@/api/table-style-template'
 
 const router = useRouter()
 
@@ -188,21 +140,23 @@ const pagination = reactive({
 const tableData = ref<TableConfig[]>([])
 const loading = ref(false)
 
-// 数据库表映射
-const tableMap = ref<Record<number, string>>({})
-
-// 样式模板相关
-const styleTemplates = ref<TableStyleTemplate[]>([])
-const templateDialogVisible = ref(false)
-const rowStyleTemplate = ref<TableConfig | null>(null)
-const templateForm = reactive({
-  styleTemplateId: null as number | null
-})
-
-// 获取表名
-const getTableName = (tableId?: number) => {
-  if (!tableId) return '-'
-  return tableMap.value[tableId] || `表${tableId}`
+// 解析 configJson 获取配置摘要
+const getConfigSummary = (row: TableConfig) => {
+  try {
+    if (row.configJson) {
+      const config = JSON.parse(row.configJson)
+      return {
+        searchCount: config.searchFields?.length || 0,
+        buttonCount: config.toolbar?.buttons?.length || 0,
+        columnCount: config.tableColumns?.length || row.columns?.length || 0
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return {
+    searchCount: 0,
+    buttonCount: 0,
+    columnCount: row.columns?.length || 0
+  }
 }
 
 // 加载数据
@@ -288,55 +242,9 @@ const handleDelete = (row: TableConfig) => {
   })
 }
 
-// 加载样式模板列表
-const loadStyleTemplates = async () => {
-  try {
-    styleTemplates.value = await getAllTableStyleTemplates()
-  } catch (error) {
-    console.error('加载样式模板失败', error)
-  }
-}
-
-// 打开样式模板选择对话框
-const handleStyleTemplate = (row: TableConfig) => {
-  rowStyleTemplate.value = row
-  templateForm.styleTemplateId = row.styleTemplateId || null
-  templateDialogVisible.value = true
-}
-
-// 获取当前模板名称
-const getCurrentTemplateName = (templateId?: number) => {
-  if (!templateId) return '未设置'
-  const template = styleTemplates.value.find(t => t.id === templateId)
-  return template?.templateName || '未知模板'
-}
-
-// 获取选中模板的描述
-const getSelectedTemplateDesc = () => {
-  if (!templateForm.styleTemplateId) return '-'
-  const template = styleTemplates.value.find(t => t.id === templateForm.styleTemplateId)
-  return template?.description || '-'
-}
-
-// 保存样式模板
-const handleSaveStyleTemplate = async () => {
-  if (!rowStyleTemplate.value?.id) return
-  try {
-    await updateTable(rowStyleTemplate.value.id, {
-      styleTemplateId: templateForm.styleTemplateId || undefined
-    })
-    ElMessage.success('样式模板应用成功')
-    templateDialogVisible.value = false
-    loadData()
-  } catch (error) {
-    ElMessage.error('样式模板应用失败')
-  }
-}
-
 // 页面挂载时加载数据
 onMounted(() => {
   loadData()
-  loadStyleTemplates()
 })
 </script>
 

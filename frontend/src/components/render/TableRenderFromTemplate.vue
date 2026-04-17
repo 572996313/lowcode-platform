@@ -34,12 +34,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { TableColumnV4, TableConfigV4, ActionButton } from '@/types/table'
+import type { TableColumnConfig, TableConfig } from '@/api/table-standard'
 import TableColumnRender from './TableColumnRender.vue'
 
 interface Props {
-  columns: TableColumnV4[]
-  tableConfig?: TableConfigV4
+  columns: TableColumnConfig[]
+  tableConfig?: TableConfig
   title?: string
   apiUrl?: string
 }
@@ -49,8 +49,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'action-click', action: ActionButton, row: any): void
-}>()
+  (e: 'action-click', action: any, row: any): void
+}>>()
 
 // 从 tableConfig 获取配置
 const border = computed(() => props.tableConfig?.border ?? true)

@@ -18,104 +18,189 @@
     </div>
 
     <div class="designer-body">
-      <!-- 左侧配置 -->
+      <!-- 左侧配置面板 -->
       <div class="config-panel">
         <el-tabs v-model="activeTab">
+          <!-- 基础配置 -->
           <el-tab-pane label="基础配置" name="basic">
             <el-form label-width="100px" size="small">
               <el-form-item label="表格名称">
-                <el-input v-model="tableConfig.tableName" placeholder="请输入表格名称" />
+                <el-input v-model="designerConfig.tableName" placeholder="请输入表格名称" />
               </el-form-item>
               <el-form-item label="表格编码">
-                <el-input v-model="tableConfig.tableCode" placeholder="请输入表格编码" />
+                <el-input v-model="designerConfig.tableCode" placeholder="请输入表格编码" />
               </el-form-item>
               <el-form-item label="组件分类">
-                <el-radio-group v-model="tableConfig.componentCategory">
+                <el-radio-group v-model="designerConfig.componentCategory">
                   <el-radio label="common">通用组件库</el-radio>
                   <el-radio label="business">业务组件库</el-radio>
                 </el-radio-group>
-                <div class="form-tip">
-                  通用组件可在所有页面复用，业务组件仅用于特定业务场景
-                </div>
               </el-form-item>
               <el-form-item label="组件标签">
                 <el-input
-                  v-model="tableConfig.componentTags"
+                  v-model="designerConfig.componentTags"
                   type="textarea"
                   :rows="2"
-                  placeholder="请输入标签，用逗号分隔（如：system,list,report）"
+                  placeholder="请输入标签，用逗号分隔"
                 />
               </el-form-item>
               <el-form-item label="数据接口">
-                <el-input v-model="tableConfig.apiUrl" placeholder="请输入API地址" />
+                <el-input v-model="designerConfig.apiUrl" placeholder="请输入API地址" />
               </el-form-item>
               <el-form-item label="请求方式">
-                <el-select v-model="tableConfig.apiMethod" style="width: 100%">
+                <el-select v-model="designerConfig.apiMethod" style="width: 100%">
                   <el-option label="GET" value="GET" />
                   <el-option label="POST" value="POST" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="是否分页">
-                <el-switch v-model="tableConfig.pagination" />
-              </el-form-item>
-              <el-form-item label="每页条数" v-if="tableConfig.pagination">
-                <el-input-number v-model="tableConfig.pageSize" :min="5" :max="100" />
-              </el-form-item>
-              <el-form-item label="显示序号">
-                <el-switch v-model="tableConfig.showIndex" />
-              </el-form-item>
-              <el-form-item label="显示多选">
-                <el-switch v-model="tableConfig.selection" />
-              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- 表格设置 -->
+          <el-tab-pane label="表格设置" name="tableSettings">
+            <el-form label-width="100px" size="small">
               <el-form-item label="显示边框">
-                <el-switch v-model="tableConfig.border" />
+                <el-switch v-model="designerConfig.tableConfig.border" />
               </el-form-item>
               <el-form-item label="斑马纹">
-                <el-switch v-model="tableConfig.stripe" />
+                <el-switch v-model="designerConfig.tableConfig.stripe" />
+              </el-form-item>
+              <el-form-item label="组件尺寸">
+                <el-radio-group v-model="designerConfig.tableConfig.size">
+                  <el-radio-button label="large">大</el-radio-button>
+                  <el-radio-button label="default">默认</el-radio-button>
+                  <el-radio-button label="small">小</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="显示分页">
+                <el-switch v-model="designerConfig.tableConfig.showPagination" />
+              </el-form-item>
+              <el-form-item label="每页条数" v-if="designerConfig.tableConfig.showPagination">
+                <el-input-number v-model="designerConfig.tableConfig.pageSize" :min="5" :max="100" />
+              </el-form-item>
+              <el-form-item label="分页选项" v-if="designerConfig.tableConfig.showPagination">
+                <el-select
+                  v-model="designerConfig.tableConfig.pageSizes"
+                  multiple
+                  style="width: 100%"
+                  placeholder="选择分页选项"
+                >
+                  <el-option :value="5" label="5" />
+                  <el-option :value="10" label="10" />
+                  <el-option :value="20" label="20" />
+                  <el-option :value="50" label="50" />
+                  <el-option :value="100" label="100" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="显示序号">
+                <el-switch v-model="designerConfig.tableConfig.showIndex" />
+              </el-form-item>
+              <el-form-item label="显示多选">
+                <el-switch v-model="designerConfig.tableConfig.showSelection" />
               </el-form-item>
             </el-form>
           </el-tab-pane>
-          <el-tab-pane label="列配置" name="columns">
-            <div class="column-list">
-              <div class="column-header">
-                <span>列配置</span>
-                <el-dropdown @command="handleAddColumnType">
-                  <el-button type="primary" size="small">
-                    <el-icon><Plus /></el-icon>添加列
-                    <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="text">普通文本</el-dropdown-item>
-                      <el-dropdown-item command="image">图片</el-dropdown-item>
-                      <el-dropdown-item command="tag">标签</el-dropdown-item>
-                      <el-dropdown-item command="datetime">日期时间</el-dropdown-item>
-                      <el-dropdown-item command="date">日期</el-dropdown-item>
-                      <el-dropdown-item command="switch">开关</el-dropdown-item>
-                      <el-dropdown-item command="link">链接</el-dropdown-item>
-                      <el-dropdown-item command="progress">进度条</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
+
+          <!-- 工具栏配置 -->
+          <el-tab-pane label="工具栏" name="toolbar">
+            <div class="section-header">
+              <span>工具栏按钮</span>
+              <el-button type="primary" size="small" @click="addToolbarButton">
+                <el-icon><Plus /></el-icon>添加按钮
+              </el-button>
+            </div>
+            <div class="item-list">
               <div
-                v-for="(column, index) in tableConfig.columns"
-                :key="column.id"
-                class="column-item"
-                :class="{ active: selectedColumn?.id === column.id }"
-                @click="selectColumn(column)"
+                v-for="(btn, index) in designerConfig.toolbar.buttons"
+                :key="index"
+                class="item-card"
+                :class="{ active: isSelected('toolbar', index) }"
+                @click="selectElement('toolbar', index)"
               >
-                <div class="column-info">
-                  <span class="column-label">{{ column.label }}</span>
-                  <span class="column-code">{{ column.columnCode || column.prop }}</span>
-                  <el-tag v-if="column.type" size="small" type="info">{{ getColumnTypeLabel(column.type) }}</el-tag>
+                <div class="item-info">
+                  <el-tag :type="(btn.btnType as any) || 'info'" size="small">{{ btn.label }}</el-tag>
+                  <span class="item-detail">{{ btn.action }}</span>
                 </div>
-                <div class="column-actions">
-                  <el-icon @click.stop="moveColumnUp(index)" v-if="index > 0"><Top /></el-icon>
-                  <el-icon @click.stop="moveColumnDown(index)" v-if="index < tableConfig.columns.length - 1"><Bottom /></el-icon>
+                <div class="item-actions">
+                  <el-icon v-if="index > 0" @click.stop="moveToolbarButton(index, -1)"><Top /></el-icon>
+                  <el-icon v-if="index < designerConfig.toolbar.buttons.length - 1" @click.stop="moveToolbarButton(index, 1)"><Bottom /></el-icon>
+                  <el-icon @click.stop="removeToolbarButton(index)"><Delete /></el-icon>
+                </div>
+              </div>
+              <el-empty v-if="!designerConfig.toolbar.buttons.length" description="暂无工具栏按钮" :image-size="60" />
+            </div>
+          </el-tab-pane>
+
+          <!-- 搜索配置 -->
+          <el-tab-pane label="搜索配置" name="search">
+            <div class="section-header">
+              <span>搜索字段</span>
+              <el-button type="primary" size="small" @click="addSearchField">
+                <el-icon><Plus /></el-icon>添加字段
+              </el-button>
+            </div>
+            <div class="item-list">
+              <div
+                v-for="(field, index) in designerConfig.searchFields"
+                :key="index"
+                class="item-card"
+                :class="{ active: isSelected('search', index) }"
+                @click="selectElement('search', index)"
+              >
+                <div class="item-info">
+                  <el-tag size="small">{{ field.label }}</el-tag>
+                  <span class="item-detail">{{ field.field }} ({{ getSearchTypeLabel(field.type) }})</span>
+                </div>
+                <div class="item-actions">
+                  <el-icon v-if="index > 0" @click.stop="moveSearchField(index, -1)"><Top /></el-icon>
+                  <el-icon v-if="index < designerConfig.searchFields.length - 1" @click.stop="moveSearchField(index, 1)"><Bottom /></el-icon>
+                  <el-icon @click.stop="removeSearchField(index)"><Delete /></el-icon>
+                </div>
+              </div>
+              <el-empty v-if="!designerConfig.searchFields.length" description="暂无搜索字段" :image-size="60" />
+            </div>
+          </el-tab-pane>
+
+          <!-- 列配置 -->
+          <el-tab-pane label="列配置" name="columns">
+            <div class="section-header">
+              <span>表格列</span>
+              <el-dropdown @command="handleAddColumnType">
+                <el-button type="primary" size="small">
+                  <el-icon><Plus /></el-icon>添加列
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="text">文本列</el-dropdown-item>
+                    <el-dropdown-item command="tag">标签列</el-dropdown-item>
+                    <el-dropdown-item command="date">日期列</el-dropdown-item>
+                    <el-dropdown-item command="index">序号列</el-dropdown-item>
+                    <el-dropdown-item command="selection">多选列</el-dropdown-item>
+                    <el-dropdown-item command="action">操作列</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+            <div class="item-list">
+              <div
+                v-for="(col, index) in designerConfig.tableColumns"
+                :key="index"
+                class="item-card"
+                :class="{ active: isSelected('column', index) }"
+                @click="selectElement('column', index)"
+              >
+                <div class="item-info">
+                  <el-tag size="small" :type="getColumnTagType(col.type)">{{ col.label }}</el-tag>
+                  <span class="item-detail">{{ col.prop || col.type }} ({{ getColumnTypeLabel(col.type) }})</span>
+                </div>
+                <div class="item-actions">
+                  <el-icon v-if="index > 0" @click.stop="moveColumn(index, -1)"><Top /></el-icon>
+                  <el-icon v-if="index < designerConfig.tableColumns.length - 1" @click.stop="moveColumn(index, 1)"><Bottom /></el-icon>
                   <el-icon @click.stop="removeColumn(index)"><Delete /></el-icon>
                 </div>
               </div>
+              <el-empty v-if="!designerConfig.tableColumns.length" description="请添加至少一个列" :image-size="60" />
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -125,241 +210,274 @@
       <div class="preview-panel">
         <div class="panel-title">预览效果</div>
         <div class="preview-area">
-          <el-table
+          <ConfigToolbar
+            :title="designerConfig.tableName || '表格预览'"
+            :buttons="designerConfig.toolbar.buttons"
+            @action="() => {}"
+          />
+          <ConfigSearch
+            v-if="designerConfig.searchFields.length"
+            :fields="designerConfig.searchFields"
+            :model-value="previewSearchParams"
+            @update:model-value="updatePreviewSearchParams"
+            @search="() => {}"
+            @reset="resetPreviewSearchParams"
+          />
+          <ConfigTable
+            :columns="designerConfig.tableColumns"
             :data="mockData"
-            :border="tableConfig.border"
-            :stripe="tableConfig.stripe"
-            style="width: 100%"
-          >
-            <el-table-column v-if="tableConfig.selection" type="selection" width="55" />
-            <el-table-column v-if="tableConfig.showIndex" type="index" label="序号" width="60" />
-            <el-table-column
-              v-for="column in tableConfig.columns"
-              :key="column.id"
-              :prop="column.columnCode || column.prop"
-              :label="column.label"
-              :width="column.width"
-              :min-width="column.minWidth"
-              :sortable="column.sortable"
-              :fixed="column.fixed"
-              :align="column.align"
-            >
-              <template #default="{ row }">
-                <!-- 预览图片 -->
-                <template v-if="column.type === 'image' && column.imageConfig">
-                  <el-image
-                    v-if="row[column.prop]"
-                    :src="row[column.prop]"
-                    :style="{
-                      width: `${column.imageConfig.width}px`,
-                      height: `${column.imageConfig.height}px`,
-                      borderRadius: column.imageConfig.radius
-                    }"
-                    :fit="column.imageConfig.fit"
-                  />
-                  <span v-else>-</span>
-                </template>
-                <!-- 预览标签 -->
-                <template v-else-if="column.type === 'tag' && column.tagConfig">
-                  <el-tag :type="getPreviewTagType(row[column.prop], column)">
-                    {{ getPreviewTagText(row[column.prop], column) }}
-                  </el-tag>
-                </template>
-                <!-- 预览开关 -->
-                <template v-else-if="column.type === 'switch'">
-                  <el-switch :model-value="!!row[column.prop]" disabled />
-                </template>
-                <!-- 预览日期时间 -->
-                <template v-else-if="column.type === 'datetime' || column.type === 'date'">
-                  {{ row[column.prop] || '-' }}
-                </template>
-                <!-- 预览进度条 -->
-                <template v-else-if="column.type === 'progress'">
-                  <el-progress :percentage="Number(row[column.prop]) || 0" />
-                </template>
-                <!-- 普通文本 -->
-                <template v-else>
-                  {{ row[column.columnCode || column.prop] || '-' }}
-                </template>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-pagination
-            v-if="tableConfig.pagination"
-            :page-size="tableConfig.pageSize"
-            :total="100"
-            layout="total, sizes, prev, pager, next"
-            style="margin-top: 16px; justify-content: flex-end;"
+            :config="designerConfig.tableConfig"
+            :total="mockData.length"
+            @action="() => {}"
+            @page-change="() => {}"
+            @selection-change="() => {}"
           />
         </div>
       </div>
 
-      <!-- 右侧属性配置 -->
+      <!-- 右侧属性配置面板 -->
       <div class="property-panel">
-        <div class="panel-title">列属性</div>
+        <div class="panel-title">属性配置</div>
         <div class="property-content">
-          <template v-if="selectedColumn">
+          <!-- 无选中 -->
+          <div v-if="!selectedElement" class="empty-tip">
+            <p>请选择一个元素进行配置</p>
+          </div>
+
+          <!-- 列属性 -->
+          <template v-else-if="selectedElement.type === 'column'">
             <el-form label-width="80px" size="small">
+              <el-divider content-position="left">列属性</el-divider>
               <el-form-item label="列类型">
-                <el-select v-model="selectedColumn.type" style="width: 100%">
-                  <el-option label="普通文本" value="text" />
-                  <el-option label="图片" value="image" />
-                  <el-option label="标签" value="tag" />
-                  <el-option label="日期时间" value="datetime" />
-                  <el-option label="日期" value="date" />
-                  <el-option label="开关" value="switch" />
-                  <el-option label="链接" value="link" />
-                  <el-option label="进度条" value="progress" />
+                <el-select v-model="currentColumn!.type" style="width: 100%" @change="handleColumnChange">
+                  <el-option label="文本列" value="text" />
+                  <el-option label="标签列" value="tag" />
+                  <el-option label="日期列" value="date" />
+                  <el-option label="序号列" value="index" />
+                  <el-option label="多选列" value="selection" />
+                  <el-option label="操作列" value="action" />
                 </el-select>
               </el-form-item>
-
               <el-form-item label="列标题">
-                <el-input v-model="selectedColumn.label" />
+                <el-input v-model="currentColumn!.label" @change="handleColumnChange" />
               </el-form-item>
-
-              <el-form-item label="字段名">
-                <el-input v-model="selectedColumn.prop" placeholder="V4 格式字段名" />
+              <el-form-item label="字段名" v-if="currentColumn!.type !== 'index' && currentColumn!.type !== 'selection'">
+                <el-input v-model="currentColumn!.prop" @change="handleColumnChange" />
               </el-form-item>
-
               <el-form-item label="列宽度">
-                <el-input-number v-model="selectedColumn.width" :min="0" />
+                <el-input-number v-model="currentColumn!.width" :min="0" @change="handleColumnChange" />
               </el-form-item>
-
               <el-form-item label="最小宽度">
-                <el-input-number v-model="selectedColumn.minWidth" :min="0" />
+                <el-input-number v-model="currentColumn!.minWidth" :min="0" @change="handleColumnChange" />
               </el-form-item>
-
-              <el-form-item label="对齐方式">
-                <el-select v-model="selectedColumn.align" style="width: 100%">
+              <el-form-item label="对齐方式" v-if="currentColumn!.type !== 'index' && currentColumn!.type !== 'selection'">
+                <el-select v-model="currentColumn!.align" style="width: 100%" @change="handleColumnChange">
                   <el-option label="左对齐" value="left" />
                   <el-option label="居中" value="center" />
                   <el-option label="右对齐" value="right" />
                 </el-select>
               </el-form-item>
-
-              <el-form-item label="固定列">
-                <el-select v-model="selectedColumn.fixed" style="width: 100%" clearable>
+              <el-form-item label="固定列" v-if="currentColumn!.type !== 'index' && currentColumn!.type !== 'selection'">
+                <el-select v-model="currentColumn!.fixed" style="width: 100%" clearable @change="handleColumnChange">
                   <el-option label="左侧固定" value="left" />
                   <el-option label="右侧固定" value="right" />
                 </el-select>
               </el-form-item>
-
-              <el-form-item label="可排序">
-                <el-switch v-model="selectedColumn.sortable" />
+              <el-form-item label="溢出提示" v-if="currentColumn!.type === 'text' || !currentColumn!.type">
+                <el-switch v-model="currentColumn!.showOverflowTooltip" @change="handleColumnChange" />
               </el-form-item>
 
-              <el-form-item label="溢出提示">
-                <el-switch v-model="selectedColumn.showOverflowTooltip" />
-              </el-form-item>
-
-              <!-- 图片配置 -->
-              <template v-if="selectedColumn.type === 'image'">
-                <el-divider content-position="left">图片配置</el-divider>
-                <el-form-item label="图片宽度">
-                  <el-input-number v-model="selectedColumn.imageConfig.width" :min="10" />
-                </el-form-item>
-                <el-form-item label="图片高度">
-                  <el-input-number v-model="selectedColumn.imageConfig.height" :min="10" />
-                </el-form-item>
-                <el-form-item label="填充方式">
-                  <el-select v-model="selectedColumn.imageConfig.fit" style="width: 100%">
-                    <el-option label="Cover" value="cover" />
-                    <el-option label="Contain" value="contain" />
-                    <el-option label="Fill" value="fill" />
-                    <el-option label="None" value="none" />
-                    <el-option label="Scale Down" value="scale-down" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="圆角">
-                  <el-input v-model="selectedColumn.imageConfig.radius" placeholder="如 50% 或 4px" />
-                </el-form-item>
-                <el-form-item label="支持预览">
-                  <el-switch v-model="selectedColumn.imageConfig.preview" />
-                </el-form-item>
+              <!-- Tag 配置 -->
+              <template v-if="currentColumn!.type === 'tag'">
+                <el-divider content-position="left">标签映射</el-divider>
+                <div v-for="(mapping, key) in currentColumn!.tagConfig?.mapping" :key="key" class="tag-config-item">
+                  <div class="tag-config-row">
+                    <el-input :model-value="key" disabled style="width: 80px" />
+                    <el-input v-model="mapping.text" placeholder="显示文本" @change="handleColumnChange" />
+                    <el-select v-model="mapping.type" style="width: 90px" @change="handleColumnChange">
+                      <el-option label="主要" value="primary" />
+                      <el-option label="成功" value="success" />
+                      <el-option label="警告" value="warning" />
+                      <el-option label="危险" value="danger" />
+                      <el-option label="信息" value="info" />
+                      <el-option label="默认" value="" />
+                    </el-select>
+                    <el-button size="small" type="danger" @click="removeTagMapping(key as string)">删除</el-button>
+                  </div>
+                </div>
+                <div class="add-tag-mapping">
+                  <el-input v-model="newTagKey" placeholder="值" style="width: 80px" />
+                  <el-button size="small" @click="addTagMapping">添加映射</el-button>
+                </div>
               </template>
 
-              <!-- 标签配置 -->
-              <template v-if="selectedColumn.type === 'tag'">
-                <el-divider content-position="left">标签配置</el-divider>
-                <div v-for="(tag, key) in selectedColumn.tagConfig" :key="key" class="tag-config-item">
-                  <el-form-item :label="`值: ${key}`">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                      <el-input v-model="tag.text" placeholder="显示文本" style="width: 120px;" />
-                      <el-select v-model="tag.type" style="width: 100px;">
+              <!-- 操作列配置 -->
+              <template v-if="currentColumn!.type === 'action'">
+                <el-divider content-position="left">操作按钮</el-divider>
+                <div class="action-buttons-config">
+                  <div v-for="(btn, bi) in currentColumn!.actionConfig?.buttons" :key="bi" class="action-btn-item">
+                    <div class="action-btn-row">
+                      <el-input v-model="btn.label" placeholder="按钮名称" @change="handleColumnChange" />
+                      <el-select v-model="btn.btnType" style="width: 90px" @change="handleColumnChange">
+                        <el-option label="主要" value="primary" />
                         <el-option label="成功" value="success" />
                         <el-option label="警告" value="warning" />
                         <el-option label="危险" value="danger" />
                         <el-option label="信息" value="info" />
-                        <el-option label="主要" value="primary" />
+                        <el-option label="默认" value="" />
                       </el-select>
-                      <el-button size="small" type="danger" @click="removeTagConfig(key)">删除</el-button>
+                      <el-button size="small" type="danger" @click="removeActionBtn(bi)">删除</el-button>
                     </div>
-                  </el-form-item>
+                    <!-- 按钮动作配置 -->
+                    <div class="action-config-section">
+                      <el-form label-width="70px" size="small">
+                        <el-form-item label="动作标识">
+                          <el-input v-model="btn.action" @change="handleColumnChange" />
+                        </el-form-item>
+                        <template v-if="btn.actionConfig">
+                          <el-form-item label="动作类型">
+                            <el-select v-model="btn.actionConfig.type" style="width: 100%" @change="handleColumnChange">
+                              <el-option label="打开表单" value="openForm" />
+                              <el-option label="打开表格" value="openTable" />
+                              <el-option label="路由跳转" value="route" />
+                              <el-option label="提交数据" value="submit" />
+                              <el-option label="调用API" value="api" />
+                              <el-option label="自定义" value="custom" />
+                            </el-select>
+                          </el-form-item>
+                          <el-form-item label="目标编码" v-if="btn.actionConfig.type === 'openForm' || btn.actionConfig.type === 'openTable'">
+                            <el-input v-model="btn.actionConfig.targetCode" @change="handleColumnChange" />
+                          </el-form-item>
+                          <el-form-item label="打开方式" v-if="btn.actionConfig.type === 'openForm' || btn.actionConfig.type === 'openTable'">
+                            <el-radio-group v-model="btn.actionConfig.openMode" @change="handleColumnChange">
+                              <el-radio-button label="dialog">弹窗</el-radio-button>
+                              <el-radio-button label="drawer">抽屉</el-radio-button>
+                              <el-radio-button label="page">页面</el-radio-button>
+                            </el-radio-group>
+                          </el-form-item>
+                          <el-form-item label="路由路径" v-if="btn.actionConfig.type === 'route'">
+                            <el-input v-model="btn.actionConfig.routePath" @change="handleColumnChange" />
+                          </el-form-item>
+                          <el-form-item label="确认提示" v-if="btn.actionConfig.type === 'submit'">
+                            <el-input v-model="btn.actionConfig.confirmText" @change="handleColumnChange" />
+                          </el-form-item>
+                        </template>
+                      </el-form>
+                    </div>
+                  </div>
+                  <el-button type="primary" size="small" plain @click="addActionBtn">+ 添加操作按钮</el-button>
                 </div>
-                <el-button size="small" @click="addTagConfig">添加标签映射</el-button>
-              </template>
-
-              <!-- 日期配置 -->
-              <template v-if="selectedColumn.type === 'datetime' || selectedColumn.type === 'date'">
-                <el-divider content-position="left">日期配置</el-divider>
-                <el-form-item label="格式">
-                  <el-select v-model="selectedColumn.dateConfig.format" style="width: 100%">
-                    <el-option label="YYYY-MM-DD HH:mm:ss" value="YYYY-MM-DD HH:mm:ss" />
-                    <el-option label="YYYY-MM-DD" value="YYYY-MM-DD" />
-                    <el-option label="YYYY/MM/DD HH:mm:ss" value="YYYY/MM/DD HH:mm:ss" />
-                    <el-option label="YYYY/MM/DD" value="YYYY/MM/DD" />
-                    <el-option label="MM-DD HH:mm:ss" value="MM-DD HH:mm:ss" />
-                  </el-select>
-                </el-form-item>
-              </template>
-
-              <!-- 开关配置 -->
-              <template v-if="selectedColumn.type === 'switch'">
-                <el-divider content-position="left">开关配置</el-divider>
-                <el-form-item label="激活值">
-                  <el-input v-model="selectedColumn.switchConfig.activeValue" placeholder="默认: true" />
-                </el-form-item>
-                <el-form-item label="未激活值">
-                  <el-input v-model="selectedColumn.switchConfig.inactiveValue" placeholder="默认: false" />
-                </el-form-item>
-                <el-form-item label="是否禁用">
-                  <el-switch v-model="selectedColumn.switchConfig.disabled" />
-                </el-form-item>
-              </template>
-
-              <!-- 链接配置 -->
-              <template v-if="selectedColumn.type === 'link'">
-                <el-divider content-position="left">链接配置</el-divider>
-                <el-form-item label="打开方式">
-                  <el-select v-model="selectedColumn.linkConfig.target" style="width: 100%">
-                    <el-option label="_blank" value="_blank" />
-                    <el-option label="_self" value="_self" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="链接地址">
-                  <el-input v-model="selectedColumn.linkConfig.href" placeholder="支持变量 {value}" />
-                </el-form-item>
-              </template>
-
-              <!-- 进度条配置 -->
-              <template v-if="selectedColumn.type === 'progress'">
-                <el-divider content-position="left">进度条配置</el-divider>
-                <el-form-item label="进度条宽度">
-                  <el-input-number v-model="selectedColumn.progressConfig.strokeWidth" :min="2" :max="20" />
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-select v-model="selectedColumn.progressConfig.status" style="width: 100%" clearable>
-                    <el-option label="成功" value="success" />
-                    <el-option label="警告" value="warning" />
-                    <el-option label="异常" value="exception" />
-                  </el-select>
-                </el-form-item>
               </template>
             </el-form>
           </template>
-          <div v-else class="empty-tip">
-            <p>请选择一个列进行配置</p>
-          </div>
+
+          <!-- 工具栏按钮属性 -->
+          <template v-else-if="selectedElement.type === 'toolbar'">
+            <el-form label-width="80px" size="small">
+              <el-divider content-position="left">按钮属性</el-divider>
+              <el-form-item label="按钮名称">
+                <el-input v-model="currentToolbarButton!.label" @change="handleToolbarButtonChange" />
+              </el-form-item>
+              <el-form-item label="按钮类型">
+                <el-select v-model="currentToolbarButton!.btnType" style="width: 100%" @change="handleToolbarButtonChange">
+                  <el-option label="主要" value="primary" />
+                  <el-option label="成功" value="success" />
+                  <el-option label="警告" value="warning" />
+                  <el-option label="危险" value="danger" />
+                  <el-option label="信息" value="info" />
+                  <el-option label="默认" value="" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="图标">
+                <el-input v-model="currentToolbarButton!.icon" placeholder="如 Plus, Download" @change="handleToolbarButtonChange" />
+              </el-form-item>
+              <el-form-item label="动作标识">
+                <el-input v-model="currentToolbarButton!.action" @change="handleToolbarButtonChange" />
+              </el-form-item>
+
+              <el-divider content-position="left">动作配置</el-divider>
+              <template v-if="currentToolbarButton!.actionConfig">
+                <el-form-item label="动作类型">
+                  <el-select v-model="currentToolbarButton!.actionConfig.type" style="width: 100%" @change="handleToolbarButtonChange">
+                    <el-option label="打开表单" value="openForm" />
+                    <el-option label="打开表格" value="openTable" />
+                    <el-option label="路由跳转" value="route" />
+                    <el-option label="提交数据" value="submit" />
+                    <el-option label="调用API" value="api" />
+                    <el-option label="自定义" value="custom" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="目标编码" v-if="currentToolbarButton!.actionConfig.type === 'openForm' || currentToolbarButton!.actionConfig.type === 'openTable'">
+                  <el-input v-model="currentToolbarButton!.actionConfig.targetCode" @change="handleToolbarButtonChange" />
+                </el-form-item>
+                <el-form-item label="打开方式" v-if="currentToolbarButton!.actionConfig.type === 'openForm' || currentToolbarButton!.actionConfig.type === 'openTable'">
+                  <el-radio-group v-model="currentToolbarButton!.actionConfig.openMode" @change="handleToolbarButtonChange">
+                    <el-radio-button label="dialog">弹窗</el-radio-button>
+                    <el-radio-button label="drawer">抽屉</el-radio-button>
+                    <el-radio-button label="page">页面</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item label="路由路径" v-if="currentToolbarButton!.actionConfig.type === 'route'">
+                  <el-input v-model="currentToolbarButton!.actionConfig.routePath" placeholder="/path" @change="handleToolbarButtonChange" />
+                </el-form-item>
+                <el-form-item label="选择模式" v-if="currentToolbarButton!.actionConfig.type === 'submit'">
+                  <el-radio-group v-model="currentToolbarButton!.actionConfig.selectionMode" @change="handleToolbarButtonChange">
+                    <el-radio-button label="none">无需选择</el-radio-button>
+                    <el-radio-button label="single">单选</el-radio-button>
+                    <el-radio-button label="multiple">多选</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item label="确认提示" v-if="currentToolbarButton!.actionConfig.type === 'submit'">
+                  <el-input v-model="currentToolbarButton!.actionConfig.confirmText" @change="handleToolbarButtonChange" />
+                </el-form-item>
+              </template>
+              <el-button v-else size="small" @click="initToolbarButtonAction">配置动作</el-button>
+            </el-form>
+          </template>
+
+          <!-- 搜索字段属性 -->
+          <template v-else-if="selectedElement.type === 'search'">
+            <el-form label-width="80px" size="small">
+              <el-divider content-position="left">搜索字段属性</el-divider>
+              <el-form-item label="字段标签">
+                <el-input v-model="currentSearchField!.label" @change="handleSearchFieldChange" />
+              </el-form-item>
+              <el-form-item label="字段名">
+                <el-input v-model="currentSearchField!.field" @change="handleSearchFieldChange" />
+              </el-form-item>
+              <el-form-item label="组件类型">
+                <el-select v-model="currentSearchField!.type" style="width: 100%" @change="handleSearchFieldChange">
+                  <el-option label="输入框" value="input" />
+                  <el-option label="选择器" value="select" />
+                  <el-option label="日期" value="date" />
+                  <el-option label="日期范围" value="daterange" />
+                  <el-option label="数字" value="number" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="占位文本">
+                <el-input v-model="currentSearchField!.placeholder" @change="handleSearchFieldChange" />
+              </el-form-item>
+              <el-form-item label="可清空">
+                <el-switch v-model="currentSearchField!.clearable" @change="handleSearchFieldChange" />
+              </el-form-item>
+              <el-form-item label="宽度(px)">
+                <el-input-number v-model="currentSearchField!.width" :min="0" @change="handleSearchFieldChange" />
+              </el-form-item>
+
+              <!-- Select 类型选项配置 -->
+              <template v-if="currentSearchField!.type === 'select'">
+                <el-divider content-position="left">下拉选项</el-divider>
+                <div v-for="(opt, oi) in currentSearchField!.options" :key="oi" class="option-item">
+                  <div class="option-row">
+                    <el-input v-model="opt.label" placeholder="显示文本" @change="handleSearchFieldChange" />
+                    <el-input v-model="opt.value" placeholder="值" @change="handleSearchFieldChange" />
+                    <el-button size="small" type="danger" @click="removeSearchOption(oi)">删除</el-button>
+                  </div>
+                </div>
+                <el-button size="small" @click="addSearchOption">+ 添加选项</el-button>
+              </template>
+            </el-form>
+          </template>
         </div>
       </div>
     </div>
@@ -367,279 +485,421 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { createTable, updateTable, getTableConfig, type TableConfig, type TableColumn as ApiTableColumn } from '@/api/table'
-import type { TableColumnV4, ImageConfig, TagConfig, DateConfig, SwitchConfig, LinkConfig, ProgressConfig } from '@/types/table'
+import { ElMessage } from 'element-plus'
+import { createTable, updateTable, getTableConfig } from '@/api/table'
+import type {
+  ToolbarButton,
+  SearchFieldConfig,
+  TableColumnConfig,
+  TableConfig,
+  ButtonActionConfig,
+  OptionItem
+} from '@/api/table-standard'
+import ConfigToolbar from '@/views/lowcode/components/ConfigToolbar.vue'
+import ConfigSearch from '@/views/lowcode/components/ConfigSearch.vue'
+import ConfigTable from '@/views/lowcode/components/ConfigTable.vue'
 
-interface DesignerColumn {
-  id: string
-  type: string
-  label: string
-  prop?: string
-  columnCode?: string  // 兼容旧格式
-  width?: number
-  minWidth?: number
-  align?: string
-  fixed?: string
-  sortable?: boolean
-  showOverflowTooltip?: boolean
-  visible?: boolean
-  imageConfig?: ImageConfig
-  tagConfig?: TagConfig
-  dateConfig?: DateConfig
-  switchConfig?: SwitchConfig
-  linkConfig?: LinkConfig
-  progressConfig?: ProgressConfig
-}
-
+// ============ 路由 ============
 const route = useRoute()
 const router = useRouter()
 const tableId = ref<number | null>(route.query.id ? Number(route.query.id) : null)
 
+// ============ 状态 ============
 const activeTab = ref('basic')
-const selectedColumn = ref<DesignerColumn | null>(null)
 const loading = ref(false)
+const newTagKey = ref('')
 
-const tableConfig = reactive({
+interface SelectedElement {
+  type: 'column' | 'toolbar' | 'search'
+  index: number
+}
+
+const selectedElement = ref<SelectedElement | null>(null)
+
+// ============ 设计器配置（标准页格式） ============
+const designerConfig = reactive({
+  // 顶层 API 字段
   tableName: '',
   tableCode: '',
   componentCategory: 'business' as 'common' | 'business',
-  componentTags: '' as string,
+  componentTags: '',
   apiUrl: '',
   apiMethod: 'GET',
-  pagination: true,
-  pageSize: 10,
-  showIndex: true,
-  selection: false,
-  border: true,
-  stripe: true,
-  columns: [] as DesignerColumn[]
+
+  // 标准页配置（存入 configJson）
+  toolbar: {
+    buttons: [] as ToolbarButton[]
+  },
+  searchFields: [] as SearchFieldConfig[],
+  tableColumns: [] as TableColumnConfig[],
+  tableConfig: {
+    border: true,
+    stripe: true,
+    size: 'default' as 'large' | 'default' | 'small',
+    showPagination: true,
+    pageSize: 10,
+    pageSizes: [10, 20, 50, 100],
+    showIndex: false,
+    showSelection: false
+  } as TableConfig
 })
 
-// 模拟数据
-const mockData = ref([
-  { id: 1, name: '张三', age: 28, email: 'zhangsan@example.com', status: '1', avatar: 'https://via.placeholder.com/40', progress: 75 },
-  { id: 2, name: '李四', age: 32, email: 'lisi@example.com', status: '0', avatar: 'https://via.placeholder.com/40', progress: 50 },
-  { id: 3, name: '王五', age: 25, email: 'wangwu@example.com', status: '1', avatar: 'https://via.placeholder.com/40', progress: 90 }
-])
+// 预览搜索参数
+const previewSearchParams = ref<Record<string, any>>({})
 
-// 获取列类型标签
-const getColumnTypeLabel = (type: string): string => {
+function updatePreviewSearchParams(val: Record<string, any>) {
+  previewSearchParams.value = val
+}
+
+function resetPreviewSearchParams() {
+  previewSearchParams.value = {}
+}
+
+// ============ 计算属性：当前选中元素 ============
+const currentColumn = computed(() => {
+  if (selectedElement.value?.type === 'column') {
+    return designerConfig.tableColumns[selectedElement.value.index]
+  }
+  return null
+})
+
+const currentToolbarButton = computed(() => {
+  if (selectedElement.value?.type === 'toolbar') {
+    return designerConfig.toolbar.buttons[selectedElement.value.index]
+  }
+  return null
+})
+
+const currentSearchField = computed(() => {
+  if (selectedElement.value?.type === 'search') {
+    return designerConfig.searchFields[selectedElement.value.index]
+  }
+  return null
+})
+
+// ============ 预览 Mock 数据 ============
+const mockData = computed(() => {
+  const dataColumns = designerConfig.tableColumns.filter(c => c.prop && c.type !== 'action' && c.type !== 'index' && c.type !== 'selection')
+  if (!dataColumns.length) return []
+
+  const names = ['张三', '李四', '王五', '赵六', '孙七']
+  return names.map((name, i) => {
+    const row: Record<string, any> = { id: i + 1 }
+    dataColumns.forEach(col => {
+      if (col.prop) {
+        if (col.prop.includes('name') || col.prop.includes('Name')) {
+          row[col.prop] = `示例${i + 1}`
+        } else if (col.prop.includes('time') || col.prop.includes('Time') || col.prop.includes('date') || col.prop.includes('Date')) {
+          row[col.prop] = `2026-0${(i % 3) + 1}-${String((i + 1) * 5).padStart(2, '0')} 10:30:00`
+        } else if (col.prop.includes('status') || col.prop.includes('Status')) {
+          row[col.prop] = i % 2 === 0 ? '1' : '0'
+        } else if (col.type === 'tag') {
+          row[col.prop] = ['A', 'B', 'C'][i % 3]
+        } else {
+          row[col.prop] = `数据_${i + 1}`
+        }
+      }
+    })
+    return row
+  })
+})
+
+// ============ 选中逻辑 ============
+function isSelected(type: string, index: number): boolean {
+  return selectedElement.value?.type === type && selectedElement.value.index === index
+}
+
+function selectElement(type: 'column' | 'toolbar' | 'search', index: number) {
+  selectedElement.value = { type, index }
+}
+
+// ============ 工具栏按钮操作 ============
+function addToolbarButton() {
+  const btn: ToolbarButton = {
+    label: '新按钮',
+    btnType: 'primary',
+    action: 'custom'
+  }
+  designerConfig.toolbar.buttons.push(btn)
+  selectElement('toolbar', designerConfig.toolbar.buttons.length - 1)
+}
+
+function removeToolbarButton(index: number) {
+  designerConfig.toolbar.buttons.splice(index, 1)
+  if (selectedElement.value?.type === 'toolbar') {
+    if (designerConfig.toolbar.buttons.length === 0) {
+      selectedElement.value = null
+    } else if (selectedElement.value.index >= designerConfig.toolbar.buttons.length) {
+      selectedElement.value.index = designerConfig.toolbar.buttons.length - 1
+    }
+  }
+}
+
+function moveToolbarButton(index: number, direction: number) {
+  const newIndex = index + direction
+  const list = designerConfig.toolbar.buttons
+  const item = list.splice(index, 1)[0]
+  list.splice(newIndex, 0, item)
+  if (selectedElement.value?.type === 'toolbar' && selectedElement.value.index === index) {
+    selectedElement.value.index = newIndex
+  }
+}
+
+function initToolbarButtonAction() {
+  if (currentToolbarButton.value) {
+    currentToolbarButton.value.actionConfig = {
+      type: 'custom'
+    }
+  }
+}
+
+function handleToolbarButtonChange() {
+  // 响应式已自动处理
+}
+
+// ============ 搜索字段操作 ============
+function addSearchField() {
+  const field: SearchFieldConfig = {
+    field: `field_${designerConfig.searchFields.length + 1}`,
+    label: `字段${designerConfig.searchFields.length + 1}`,
+    type: 'input',
+    placeholder: '请输入',
+    clearable: true
+  }
+  designerConfig.searchFields.push(field)
+  selectElement('search', designerConfig.searchFields.length - 1)
+}
+
+function removeSearchField(index: number) {
+  designerConfig.searchFields.splice(index, 1)
+  if (selectedElement.value?.type === 'search') {
+    if (designerConfig.searchFields.length === 0) {
+      selectedElement.value = null
+    } else if (selectedElement.value.index >= designerConfig.searchFields.length) {
+      selectedElement.value.index = designerConfig.searchFields.length - 1
+    }
+  }
+}
+
+function moveSearchField(index: number, direction: number) {
+  const newIndex = index + direction
+  const list = designerConfig.searchFields
+  const item = list.splice(index, 1)[0]
+  list.splice(newIndex, 0, item)
+  if (selectedElement.value?.type === 'search' && selectedElement.value.index === index) {
+    selectedElement.value.index = newIndex
+  }
+}
+
+function handleSearchFieldChange() {
+  // 响应式已自动处理
+}
+
+function addSearchOption() {
+  if (currentSearchField.value) {
+    if (!currentSearchField.value.options) {
+      currentSearchField.value.options = []
+    }
+    currentSearchField.value.options.push({ label: '选项', value: '' })
+  }
+}
+
+function removeSearchOption(index: number) {
+  currentSearchField.value?.options?.splice(index, 1)
+}
+
+function getSearchTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    text: '文本',
-    image: '图片',
-    tag: '标签',
-    datetime: '日期时间',
+    input: '输入框',
+    select: '选择器',
     date: '日期',
-    switch: '开关',
-    link: '链接',
-    progress: '进度条'
+    daterange: '日期范围',
+    number: '数字'
   }
   return labels[type] || type
 }
 
-// 添加指定类型的列
-const handleAddColumnType = (type: string) => {
+// ============ 列操作 ============
+function handleAddColumnType(type: string) {
   addColumn(type)
 }
 
-const addColumn = (type: string = 'text') => {
-  const newColumn: DesignerColumn = {
-    id: Date.now().toString(),
-    type,
-    label: `列${tableConfig.columns.length + 1}`,
-    prop: `column_${tableConfig.columns.length + 1}`,
-    columnCode: `column_${tableConfig.columns.length + 1}`,
-    align: 'left',
-    sortable: false,
-    visible: true,
-    showOverflowTooltip: false
+function addColumn(type: string = 'text') {
+  const col: TableColumnConfig = {
+    prop: `col_${designerConfig.tableColumns.length + 1}`,
+    label: `列${designerConfig.tableColumns.length + 1}`,
+    type: type as any,
+    align: 'left'
   }
 
-  // 根据类型添加默认配置
-  if (type === 'image') {
-    newColumn.imageConfig = {
-      width: 40,
-      height: 40,
-      fit: 'cover',
-      radius: '4px',
-      preview: true
-    }
-    newColumn.width = 80
+  if (type === 'text') {
+    col.minWidth = 120
   } else if (type === 'tag') {
-    newColumn.tagConfig = {
-      '1': { text: '启用', type: 'success' },
-      '0': { text: '禁用', type: 'info' }
+    col.width = 120
+    col.tagConfig = { mapping: { '1': { text: '启用', type: 'success' }, '0': { text: '禁用', type: 'danger' } } }
+  } else if (type === 'date') {
+    col.width = 180
+  } else if (type === 'index') {
+    col.label = '序号'
+    col.width = 60
+    col.align = 'center'
+  } else if (type === 'selection') {
+    col.label = '选择'
+    col.width = 55
+    col.align = 'center'
+  } else if (type === 'action') {
+    col.label = '操作'
+    col.width = 200
+    col.align = 'center'
+    col.fixed = 'right'
+    col.actionConfig = {
+      buttons: [
+        { label: '编辑', btnType: 'primary', action: 'edit' },
+        { label: '删除', btnType: 'danger', action: 'delete' }
+      ]
     }
-    newColumn.width = 100
-  } else if (type === 'datetime' || type === 'date') {
-    newColumn.dateConfig = {
-      format: type === 'datetime' ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'
-    }
-    newColumn.width = 180
-  } else if (type === 'switch') {
-    newColumn.switchConfig = {
-      activeValue: true,
-      inactiveValue: false,
-      disabled: false
-    }
-    newColumn.width = 80
-    newColumn.align = 'center'
-  } else if (type === 'link') {
-    newColumn.linkConfig = {
-      target: '_blank',
-      href: '{value}'
-    }
-  } else if (type === 'progress') {
-    newColumn.progressConfig = {
-      strokeWidth: 6
-    }
-    newColumn.width = 150
   }
 
-  tableConfig.columns.push(newColumn)
-  selectedColumn.value = newColumn
+  designerConfig.tableColumns.push(col)
+  selectElement('column', designerConfig.tableColumns.length - 1)
 }
 
-const selectColumn = (column: DesignerColumn) => {
-  selectedColumn.value = column
-  activeTab.value = 'columns'
-}
-
-const removeColumn = (index: number) => {
-  const removed = tableConfig.columns.splice(index, 1)[0]
-  if (selectedColumn.value?.id === removed.id) {
-    selectedColumn.value = null
+function removeColumn(index: number) {
+  designerConfig.tableColumns.splice(index, 1)
+  if (selectedElement.value?.type === 'column') {
+    if (designerConfig.tableColumns.length === 0) {
+      selectedElement.value = null
+    } else if (selectedElement.value.index >= designerConfig.tableColumns.length) {
+      selectedElement.value.index = designerConfig.tableColumns.length - 1
+    }
   }
 }
 
-const moveColumnUp = (index: number) => {
-  if (index > 0) {
-    const temp = tableConfig.columns[index]
-    tableConfig.columns[index] = tableConfig.columns[index - 1]
-    tableConfig.columns[index - 1] = temp
+function moveColumn(index: number, direction: number) {
+  const newIndex = index + direction
+  const list = designerConfig.tableColumns
+  const item = list.splice(index, 1)[0]
+  list.splice(newIndex, 0, item)
+  if (selectedElement.value?.type === 'column' && selectedElement.value.index === index) {
+    selectedElement.value.index = newIndex
   }
 }
 
-const moveColumnDown = (index: number) => {
-  if (index < tableConfig.columns.length - 1) {
-    const temp = tableConfig.columns[index]
-    tableConfig.columns[index] = tableConfig.columns[index + 1]
-    tableConfig.columns[index + 1] = temp
+function handleColumnChange() {
+  // 响应式已自动处理
+}
+
+function getColumnTypeLabel(type?: string): string {
+  const labels: Record<string, string> = {
+    text: '文本',
+    tag: '标签',
+    date: '日期',
+    index: '序号',
+    selection: '多选',
+    action: '操作'
+  }
+  return labels[type || 'text'] || type || '文本'
+}
+
+function getColumnTagType(type?: string): string {
+  const map: Record<string, string> = {
+    text: '',
+    tag: 'success',
+    date: 'warning',
+    index: 'info',
+    selection: 'info',
+    action: 'danger'
+  }
+  return map[type || 'text'] || ''
+}
+
+// Tag 映射操作
+function addTagMapping() {
+  if (!currentColumn.value || !newTagKey.value) return
+  if (!currentColumn.value.tagConfig) {
+    currentColumn.value.tagConfig = { mapping: {} }
+  }
+  currentColumn.value.tagConfig.mapping[newTagKey.value] = { text: '标签文本', type: 'info' }
+  newTagKey.value = ''
+}
+
+function removeTagMapping(key: string) {
+  if (currentColumn.value?.tagConfig?.mapping) {
+    delete currentColumn.value.tagConfig.mapping[key]
   }
 }
 
-// 添加标签配置
-const addTagConfig = () => {
-  if (!selectedColumn.value) return
-  if (!selectedColumn.value.tagConfig) {
-    selectedColumn.value.tagConfig = {}
-  }
-  const key = `value_${Object.keys(selectedColumn.value.tagConfig).length + 1}`
-  selectedColumn.value.tagConfig[key] = { text: '标签文本', type: 'info' }
+// 操作列按钮操作
+function addActionBtn() {
+  if (!currentColumn.value?.actionConfig) return
+  currentColumn.value.actionConfig.buttons.push({
+    label: '新按钮',
+    btnType: 'primary',
+    action: 'custom'
+  })
 }
 
-// 删除标签配置
-const removeTagConfig = (key: string) => {
-  if (!selectedColumn.value?.tagConfig) return
-  delete selectedColumn.value.tagConfig[key]
+function removeActionBtn(index: number) {
+  currentColumn.value?.actionConfig?.buttons.splice(index, 1)
 }
 
-// 预览获取标签类型
-const getPreviewTagType = (value: any, column: DesignerColumn): string => {
-  if (!column.tagConfig) return 'info'
-  const config = column.tagConfig[value]
-  return config?.type || 'info'
-}
-
-// 预览获取标签文本
-const getPreviewTagText = (value: any, column: DesignerColumn): string => {
-  if (!column.tagConfig) return value || '-'
-  const config = column.tagConfig[value]
-  return config?.text || value || '-'
-}
-
-const handlePreview = () => {
-  ElMessage.info('预览功能开发中...')
-}
-
-const handleBack = () => {
-  router.back()
-}
-
+// ============ 保存 ============
 const handleSave = async () => {
-  // 表单验证
-  if (!tableConfig.tableName) {
+  if (!designerConfig.tableName) {
     ElMessage.warning('请输入表格名称')
     return
   }
-  if (!tableConfig.tableCode) {
+  if (!designerConfig.tableCode) {
     ElMessage.warning('请输入表格编码')
     return
   }
-  if (tableConfig.columns.length === 0) {
+  if (designerConfig.tableColumns.length === 0) {
     ElMessage.warning('请添加至少一个列')
     return
   }
 
   loading.value = true
   try {
-    // 构建 V4 格式的列配置
-    const v4Columns: TableColumnV4[] = tableConfig.columns.map((col, index) => ({
-      prop: col.prop || col.columnCode || '',
-      label: col.label,
-      type: col.type as any,
-      width: col.width,
-      minWidth: col.minWidth,
-      align: col.align as any,
-      fixed: col.fixed as any,
-      sortable: col.sortable,
-      showOverflowTooltip: col.showOverflowTooltip,
-      imageConfig: col.imageConfig,
-      tagConfig: col.tagConfig,
-      dateConfig: col.dateConfig,
-      switchConfig: col.switchConfig,
-      linkConfig: col.linkConfig,
-      progressConfig: col.progressConfig
-    }))
+    const configJson = JSON.stringify({
+      pageCode: designerConfig.tableCode,
+      pageName: designerConfig.tableName,
+      toolbar: designerConfig.toolbar,
+      searchFields: designerConfig.searchFields,
+      tableColumns: designerConfig.tableColumns,
+      tableConfig: designerConfig.tableConfig
+    })
 
-    // 构建保存数据（兼容旧 API 格式）
-    const saveData: TableConfig = {
-      tableName: tableConfig.tableName,
-      tableCode: tableConfig.tableCode,
-      componentCategory: tableConfig.componentCategory,
-      componentTags: tableConfig.componentTags,
-      apiUrl: tableConfig.apiUrl,
-      apiMethod: tableConfig.apiMethod,
-      pagination: tableConfig.pagination,
-      pageSize: tableConfig.pageSize,
-      showIndex: tableConfig.showIndex,
-      selection: tableConfig.selection,
-      border: tableConfig.border,
-      stripe: tableConfig.stripe,
+    const saveData = {
+      tableName: designerConfig.tableName,
+      tableCode: designerConfig.tableCode,
+      componentCategory: designerConfig.componentCategory,
+      componentTags: designerConfig.componentTags,
+      apiUrl: designerConfig.apiUrl,
+      apiMethod: designerConfig.apiMethod,
+      pagination: designerConfig.tableConfig.showPagination,
+      pageSize: designerConfig.tableConfig.pageSize,
+      showIndex: designerConfig.tableConfig.showIndex,
+      selection: designerConfig.tableConfig.showSelection,
+      border: designerConfig.tableConfig.border,
+      stripe: designerConfig.tableConfig.stripe,
       status: true,
-      // 将 V4 格式存储在 configJson 中
-      configJson: JSON.stringify({
-        version: 4,
-        columns: v4Columns
-      }),
-      columns: tableConfig.columns.map((col, index) => ({
-        columnName: col.label,
-        columnCode: col.prop || col.columnCode || '',
-        label: col.label,
-        width: col.width,
-        minWidth: col.minWidth,
-        sortable: col.sortable || false,
-        fixed: col.fixed,
-        align: col.align || 'left',
-        visible: col.visible ?? true,
-        sortOrder: index,
-        // 兼容旧格式
-        formatterType: col.type === 'text' ? undefined : col.type,
-        formatterConfig: JSON.stringify(getFormatterConfig(col))
-      }))
+      configJson,
+      columns: designerConfig.tableColumns
+        .filter(c => c.prop && c.type !== 'index' && c.type !== 'selection')
+        .map((col, index) => ({
+          columnName: col.label,
+          columnCode: col.prop || '',
+          label: col.label,
+          width: col.width,
+          minWidth: col.minWidth,
+          sortable: false,
+          fixed: col.fixed as string || undefined,
+          align: col.align || 'left',
+          visible: true,
+          sortOrder: index
+        }))
     }
 
     if (tableId.value) {
@@ -659,26 +919,7 @@ const handleSave = async () => {
   }
 }
 
-// 获取格式化配置（用于兼容旧格式）
-const getFormatterConfig = (col: DesignerColumn): any => {
-  if (col.type === 'tag' && col.tagConfig) {
-    return {
-      typeMap: Object.fromEntries(
-        Object.entries(col.tagConfig).map(([k, v]) => [k, v.type])
-      ),
-      labelMap: Object.fromEntries(
-        Object.entries(col.tagConfig).map(([k, v]) => [k, v.text])
-      )
-    }
-  } else if (col.type === 'datetime' || col.type === 'date') {
-    return { format: col.dateConfig?.format }
-  } else if (col.type === 'image' && col.imageConfig) {
-    return { props: col.imageConfig }
-  }
-  return {}
-}
-
-// 加载表格配置(编辑模式)
+// ============ 加载 ============
 const loadTableConfig = async () => {
   if (!tableId.value) return
 
@@ -686,72 +927,50 @@ const loadTableConfig = async () => {
   try {
     const data = await getTableConfig(tableId.value)
 
-    // 加载表格基本信息
-    tableConfig.tableName = data.tableName
-    tableConfig.tableCode = data.tableCode
-    tableConfig.componentCategory = (data.componentCategory as any) || 'business'
-    tableConfig.componentTags = (data.componentTags as any) || ''
-    tableConfig.apiUrl = data.apiUrl || ''
-    tableConfig.apiMethod = data.apiMethod || 'GET'
-    tableConfig.pagination = data.pagination ?? true
-    tableConfig.pageSize = data.pageSize || 10
-    tableConfig.showIndex = data.showIndex ?? true
-    tableConfig.selection = data.selection ?? false
-    tableConfig.border = data.border ?? true
-    tableConfig.stripe = data.stripe ?? true
+    // 加载顶层字段
+    designerConfig.tableName = data.tableName
+    designerConfig.tableCode = data.tableCode
+    designerConfig.componentCategory = (data.componentCategory as any) || 'business'
+    designerConfig.componentTags = (data.componentTags as any) || ''
+    designerConfig.apiUrl = data.apiUrl || ''
+    designerConfig.apiMethod = data.apiMethod || 'GET'
 
-    // 尝试从 configJson 加载 V4 格式
-    let v4Columns: TableColumnV4[] = []
+    // 解析 configJson（标准页格式）
     if (data.configJson) {
       try {
         const configObj = JSON.parse(data.configJson)
-        if (configObj.version === 4 && configObj.columns) {
-          v4Columns = configObj.columns
+        designerConfig.toolbar = configObj.toolbar || { buttons: [] }
+        designerConfig.searchFields = configObj.searchFields || []
+        designerConfig.tableColumns = configObj.tableColumns || []
+        designerConfig.tableConfig = {
+          ...designerConfig.tableConfig,
+          ...(configObj.tableConfig || {})
         }
       } catch (e) {
         console.error('解析 configJson 失败', e)
       }
-    }
+    } else {
+      // 无 configJson 时，从顶层字段填充
+      designerConfig.tableConfig.border = data.border ?? true
+      designerConfig.tableConfig.stripe = data.stripe ?? true
+      designerConfig.tableConfig.showPagination = data.pagination ?? true
+      designerConfig.tableConfig.pageSize = data.pageSize ?? 10
+      designerConfig.tableConfig.showIndex = data.showIndex ?? false
+      designerConfig.tableConfig.showSelection = data.selection ?? false
 
-    // 加载表格列配置
-    if (v4Columns.length > 0) {
-      // 使用 V4 格式
-      tableConfig.columns = v4Columns.map((col): DesignerColumn => ({
-        id: Date.now().toString() + Math.random(),
-        type: col.type,
-        label: col.label,
-        prop: col.prop,
-        columnCode: col.prop,
-        width: col.width,
-        minWidth: col.minWidth,
-        align: col.align,
-        fixed: col.fixed,
-        sortable: col.sortable,
-        showOverflowTooltip: col.showOverflowTooltip,
-        visible: true,
-        imageConfig: col.imageConfig,
-        tagConfig: col.tagConfig,
-        dateConfig: col.dateConfig,
-        switchConfig: col.switchConfig,
-        linkConfig: col.linkConfig,
-        progressConfig: col.progressConfig
-      }))
-    } else if (data.columns && data.columns.length > 0) {
-      // 使用旧格式
-      tableConfig.columns = data.columns.map((col: ApiTableColumn): DesignerColumn => ({
-        id: col.id?.toString() || Date.now().toString(),
-        type: col.formatterType || 'text',
-        label: col.label,
-        prop: col.columnCode,
-        columnCode: col.columnCode,
-        width: col.width,
-        minWidth: col.minWidth,
-        align: col.align || 'left',
-        fixed: col.fixed,
-        sortable: col.sortable,
-        showOverflowTooltip: col.showOverflowTooltip,
-        visible: col.visible ?? true
-      }))
+      // 从 columns 数组构建 tableColumns
+      if (data.columns && data.columns.length > 0) {
+        designerConfig.tableColumns = data.columns.map(col => ({
+          prop: col.columnCode,
+          label: col.label,
+          width: col.width,
+          minWidth: col.minWidth,
+          align: (col.align as any) || 'left',
+          fixed: col.fixed as any,
+          showOverflowTooltip: col.showOverflowTooltip,
+          type: 'text'
+        }))
+      }
     }
 
     ElMessage.success('加载表格配置成功')
@@ -763,33 +982,32 @@ const loadTableConfig = async () => {
   }
 }
 
-// 组件挂载时加载数据
+// ============ 其他操作 ============
+const handlePreview = () => {
+  ElMessage.info('预览功能开发中...')
+}
+
+const handleBack = () => {
+  router.back()
+}
+
+// ============ 初始化 ============
 onMounted(() => {
   if (tableId.value) {
     loadTableConfig()
   } else {
-    // 新建模式：初始化一些默认列
-    tableConfig.columns = [
-      {
-        id: '1',
-        type: 'text',
-        label: '姓名',
-        prop: 'name',
-        columnCode: 'name',
-        minWidth: 120,
-        align: 'left',
-        visible: true
-      },
-      {
-        id: '2',
-        type: 'text',
-        label: '年龄',
-        prop: 'age',
-        columnCode: 'age',
-        width: 80,
-        align: 'center',
-        visible: true
-      }
+    // 新建模式：初始化默认列
+    designerConfig.tableColumns = [
+      { prop: 'name', label: '名称', minWidth: 150, type: 'text' },
+      { prop: 'createTime', label: '创建时间', width: 180, type: 'date' },
+      { prop: 'status', label: '状态', width: 100, align: 'center', type: 'tag', tagConfig: { mapping: { '1': { text: '启用', type: 'success' }, '0': { text: '禁用', type: 'danger' } } } },
+      { label: '操作', width: 180, align: 'center', fixed: 'right', type: 'action', actionConfig: { buttons: [{ label: '编辑', btnType: 'primary', action: 'edit' }, { label: '删除', btnType: 'danger', action: 'delete' }] } }
+    ]
+    designerConfig.toolbar.buttons = [
+      { label: '新增', btnType: 'primary', icon: 'Plus', action: 'add' }
+    ]
+    designerConfig.searchFields = [
+      { field: 'name', label: '名称', type: 'input', placeholder: '请输入名称', clearable: true }
     ]
   }
 })
@@ -834,6 +1052,7 @@ onMounted(() => {
       border-bottom: 1px solid #e6e6e6;
     }
 
+    // ========== 左侧配置面板 ==========
     .config-panel {
       width: 320px;
       min-width: 320px;
@@ -862,15 +1081,16 @@ onMounted(() => {
         overflow-y: auto;
       }
 
-      .column-list {
-        .column-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-weight: 500;
+      }
 
-        .column-item {
+      .item-list {
+        .item-card {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -889,25 +1109,26 @@ onMounted(() => {
             background-color: #ecf5ff;
           }
 
-          .column-info {
+          .item-info {
             display: flex;
             align-items: center;
             gap: 8px;
             flex: 1;
+            overflow: hidden;
 
-            .column-label {
-              font-weight: bold;
-            }
-
-            .column-code {
+            .item-detail {
               font-size: 12px;
               color: #909399;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
             }
           }
 
-          .column-actions {
+          .item-actions {
             display: flex;
             gap: 4px;
+            flex-shrink: 0;
 
             .el-icon {
               cursor: pointer;
@@ -922,6 +1143,7 @@ onMounted(() => {
       }
     }
 
+    // ========== 中间预览面板 ==========
     .preview-panel {
       flex: 1;
       min-width: 0;
@@ -943,9 +1165,10 @@ onMounted(() => {
       }
     }
 
+    // ========== 右侧属性面板 ==========
     .property-panel {
-      width: 300px;
-      min-width: 300px;
+      width: 340px;
+      min-width: 340px;
       flex-shrink: 0;
       background-color: #fff;
       border-left: 1px solid #e6e6e6;
@@ -974,13 +1197,41 @@ onMounted(() => {
         border-radius: 4px;
         margin-bottom: 8px;
       }
-    }
-  }
 
-  .form-tip {
-    font-size: 12px;
-    color: #909399;
-    margin-top: 4px;
+      .tag-config-row,
+      .option-row,
+      .action-btn-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .add-tag-mapping {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .action-buttons-config {
+        .action-btn-item {
+          padding: 8px;
+          background: #f5f7fa;
+          border-radius: 4px;
+          margin-bottom: 8px;
+
+          .action-config-section {
+            margin-top: 8px;
+            padding-left: 8px;
+            border-left: 2px solid #409eff;
+          }
+        }
+      }
+
+      .option-item {
+        margin-bottom: 6px;
+      }
+    }
   }
 }
 </style>

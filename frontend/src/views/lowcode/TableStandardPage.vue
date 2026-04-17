@@ -90,7 +90,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ConfigTable from './components/ConfigTable.vue'
 import ConfigForm from './components/ConfigForm.vue'
@@ -109,10 +109,12 @@ import {
   type ToolbarButton,
   type ActionButton
 } from '@/api/table-standard'
+import { getTableConfig } from '@/api/table'
 import { getConfig } from '@/utils/configRegistry'
 import type { FormPageConfigResponse } from '@/api/form-standard'
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -158,9 +160,55 @@ const initSearchParams = (fields: SearchFieldConfig[]) => {
 // 加载页面配置
 const loadPageConfig = async () => {
   try {
-    pageConfig.value = await getTableStandardConfig()
-    initSearchParams(pageConfig.value.searchFields)
-    pagination.size = tableConfig.value.pageSize || 10
+    const tableId = route.params.id ? Number(route.params.id) : null
+
+    if (tableId) {
+      // 从后端 /table/{id} 加载配置
+      const data = await getTableConfig(tableId)
+      if (data.configJson) {
+        const configObj = JSON.parse(data.configJson)
+        pageConfig.value = {
+          pageCode: configObj.pageCode || data.tableCode,
+          pageName: configObj.pageName || data.tableName,
+          toolbar: configObj.toolbar || { buttons: [] },
+          searchFields: configObj.searchFields || [],
+          tableColumns: configObj.tableColumns || [],
+          tableConfig: configObj.tableConfig || {}
+        }
+      } else {
+        // 无 configJson 时，使用顶层字段构建基础配置
+        pageConfig.value = {
+          pageCode: data.tableCode,
+          pageName: data.tableName,
+          toolbar: { buttons: [] },
+          searchFields: [],
+          tableColumns: (data.columns || []).map(col => ({
+            prop: col.columnCode,
+            label: col.label,
+            width: col.width,
+            minWidth: col.minWidth,
+            align: col.align as any || 'left',
+            type: 'text' as const
+          })),
+          tableConfig: {
+            border: data.border ?? true,
+            stripe: data.stripe ?? true,
+            showPagination: data.pagination ?? true,
+            pageSize: data.pageSize ?? 10,
+            showIndex: data.showIndex ?? false,
+            showSelection: data.selection ?? false
+          }
+        }
+      }
+    } else {
+      // 无路由参数时，使用 mock 配置
+      pageConfig.value = await getTableStandardConfig()
+    }
+
+    if (pageConfig.value) {
+      initSearchParams(pageConfig.value.searchFields)
+      pagination.size = tableConfig.value.pageSize || 10
+    }
   } catch (error: any) {
     ElMessage.error('加载页面配置失败: ' + error.message)
   }

@@ -28,6 +28,12 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/lowcode/TableStandardPage.vue'),
         meta: { title: '表格标准页面', icon: 'Grid' }
       },
+      {
+        path: 'table-standard/:id',
+        name: 'TableStandardPageById',
+        component: () => import('@/views/lowcode/TableStandardPage.vue'),
+        meta: { title: '表格标准页面', hideInMenu: true }
+      },
       // 表单标准页面
       {
         path: 'form-standard',
@@ -35,7 +41,7 @@ const staticRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/lowcode/FormStandardPage.vue'),
         meta: { title: '表单标准页面', icon: 'Document' }
       },
-      // 表格配置器
+      // 表格配置器（已合并到表格设计器，重定向）
       {
         path: 'table-standard-configurator',
         name: 'TableStandardConfigurator',
@@ -61,7 +67,7 @@ const staticRoutes: RouteRecordRaw[] = [
         path: 'lowcode/FreeCanvasDesigner/:pageId',
         name: 'FreeCanvasDesigner',
         component: () => import('@/views/lowcode-v6/FreeCanvasDesigner.vue'),
-        meta: { title: '自由画布设计器', hideInMenu: true, fullscreen: true }
+        meta: { title: '页面设计器', hideInMenu: true, fullscreen: true }
       },
       // 内置布局设计器（V6 版本）
       {
@@ -69,6 +75,34 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'PageDesignerV6',
         component: () => import('@/views/lowcode-v6/PageDesignerV6.vue'),
         meta: { title: '页面设计器', hideInMenu: true, fullscreen: true }
+      },
+      // 表格设计器
+      {
+        path: 'lowcode/TableDesigner',
+        name: 'TableDesigner',
+        component: () => import('@/views/lowcode/TableDesigner.vue'),
+        meta: { title: '表格设计器', hideInMenu: true }
+      },
+      // 表单设计器
+      {
+        path: 'lowcode/FormDesigner',
+        name: 'FormDesigner',
+        component: () => import('@/views/lowcode/FormDesigner.vue'),
+        meta: { title: '表单设计器', hideInMenu: true }
+      },
+      // 表格列绑定
+      {
+        path: 'lowcode/TableColumnBinding',
+        name: 'TableColumnBinding',
+        component: () => import('@/views/lowcode/TableColumnBinding.vue'),
+        meta: { title: '列绑定', hideInMenu: true }
+      },
+      // 表单字段绑定
+      {
+        path: 'lowcode/FormFieldBinding',
+        name: 'FormFieldBinding',
+        component: () => import('@/views/lowcode/FormFieldBinding.vue'),
+        meta: { title: '字段绑定', hideInMenu: true }
       },
     ]
   }

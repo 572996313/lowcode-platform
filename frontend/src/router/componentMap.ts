@@ -25,8 +25,6 @@ export const componentMap: Record<string, () => Promise<any>> = {
   '/views/lowcode/FormManage.vue': () => import('@/views/lowcode/FormManage.vue'),
   '/views/lowcode/FormStyleTemplateManage.vue': () => import('@/views/lowcode/FormStyleTemplateManage.vue'),
   '/views/lowcode/FormTemplateManage.vue': () => import('@/views/lowcode/FormTemplateManage.vue'),
-  '/views/lowcode/PageLayoutDesigner.vue': () => import('@/views/lowcode/PageLayoutDesigner.vue'),
-  '/views/lowcode/PageLayoutManage.vue': () => import('@/views/lowcode/PageLayoutManage.vue'),
   '/views/lowcode/TableColumnBinding.vue': () => import('@/views/lowcode/TableColumnBinding.vue'),
   '/views/lowcode/TableDesigner.vue': () => import('@/views/lowcode/TableDesigner.vue'),
   '/views/lowcode/TableList.vue': () => import('@/views/lowcode/TableList.vue'),

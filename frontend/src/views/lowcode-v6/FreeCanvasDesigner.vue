@@ -1,6 +1,6 @@
 /**
- * 自由画布页面设计器
- * FreeCanvasDesigner - Free Canvas Page Designer
+ * 页面设计器
+ * Page Designer — 设计页面交互逻辑
  */
 <template>
   <div class="free-canvas-designer">
@@ -10,7 +10,7 @@
         <el-icon class="back-icon" @click="handleBack">
           <ArrowLeft />
         </el-icon>
-        <h1 class="page-title">自由画布设计器</h1>
+        <h1 class="page-title">页面设计器</h1>
         <el-input
           v-if="pageConfig?.pageInfo"
           v-model="pageConfig.pageInfo.pageName"
@@ -45,8 +45,22 @@
       </div>
     </header>
 
-    <!-- 主内容区 -->
+    <!-- 主内容区：左-中-右 三栏可拖拽布局 -->
     <main class="designer-main">
+      <!-- 左侧组件库 -->
+      <aside
+        class="side-panel left-panel"
+        :style="{ width: leftPanelWidth + 'px' }"
+      >
+        <ComponentLibrary />
+      </aside>
+
+      <!-- 左侧拖拽条 -->
+      <div
+        class="resize-bar resize-bar-left"
+        @mousedown="startResize($event, 'left')"
+      />
+
       <!-- 中间画布区域 -->
       <div class="canvas-area">
         <FreeCanvas
@@ -60,21 +74,26 @@
         </div>
       </div>
 
+      <!-- 右侧拖拽条 -->
+      <div
+        class="resize-bar resize-bar-right"
+        @mousedown="startResize($event, 'right')"
+      />
+
       <!-- 右侧属性面板 -->
-      <aside class="property-panel-panel">
+      <aside
+        class="side-panel right-panel"
+        :style="{ width: rightPanelWidth + 'px' }"
+      >
         <PropertyPanel
           :component="selectedComponent"
+          :all-components="pageConfig?.components"
           :canvas-config="pageConfig?.canvas"
           @update="handleComponentUpdate"
           @delete="handleComponentDelete"
         />
       </aside>
     </main>
-
-    <!-- 底部组件库 -->
-    <footer class="component-library-panel">
-      <ComponentLibrary />
-    </footer>
 
     <!-- 预览对话框 -->
     <el-dialog
@@ -117,6 +136,42 @@ const selectedId = ref<string | null>(null)
 const saving = ref(false)
 const publishing = ref(false)
 const previewVisible = ref(false)
+
+// 左右面板宽度 & 拖拽调整
+const leftPanelWidth = ref(260)
+const rightPanelWidth = ref(400)
+
+const PANEL_MIN = 180
+const PANEL_MAX = 2300
+
+function startResize(e: MouseEvent, side: 'left' | 'right') {
+  e.preventDefault()
+  const startX = e.clientX
+  const startLeft = leftPanelWidth.value
+  const startRight = rightPanelWidth.value
+
+  const onMove = (ev: MouseEvent) => {
+    if (side === 'left') {
+      const delta = ev.clientX - startX
+      leftPanelWidth.value = Math.min(PANEL_MAX, Math.max(PANEL_MIN, startLeft + delta))
+    } else {
+      const delta = startX - ev.clientX
+      rightPanelWidth.value = Math.min(PANEL_MAX, Math.max(PANEL_MIN, startRight + delta))
+    }
+  }
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
 
 // 选中的组件
 const selectedComponent = computed(() => {
@@ -428,6 +483,7 @@ async function handlePublish() {
   justify-content: space-between;
   padding: 0 20px;
   height: 56px;
+  flex-shrink: 0;
   background: #fff;
   border-bottom: 1px solid #e4e7ed;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -476,16 +532,39 @@ async function handlePublish() {
   overflow: hidden;
 }
 
-.component-library-panel {
-  height: 180px;
+/* 侧边面板通用样式 */
+.side-panel {
   flex-shrink: 0;
   background: #fff;
-  border-top: 1px solid #e4e7ed;
   overflow: hidden;
+}
+
+.left-panel {
+  border-right: none; /* resize-bar 充当分隔 */
+}
+
+.right-panel {
+  border-left: none; /* resize-bar 充当分隔 */
+}
+
+/* 拖拽条 */
+.resize-bar {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: #e4e7ed;
+  transition: background 0.2s;
+  z-index: 10;
+
+  &:hover,
+  &:active {
+    background: #409eff;
+  }
 }
 
 .canvas-area {
   flex: 1;
+  min-width: 200px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -503,14 +582,6 @@ async function handlePublish() {
       font-size: 32px;
     }
   }
-}
-
-.property-panel-panel {
-  width: 320px;
-  flex-shrink: 0;
-  background: #fff;
-  border-left: 1px solid #e4e7ed;
-  overflow: hidden;
 }
 
 :deep(.el-dialog__body) {

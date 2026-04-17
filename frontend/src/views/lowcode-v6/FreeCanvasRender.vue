@@ -40,9 +40,8 @@ import { ElMessage } from 'element-plus'
 import { getPageConfig } from '@/api/page-v6'
 import type { FreeCanvasPageConfig, ComponentType, ComponentInstance } from '@/types/page-free-canvas'
 import TreeRenderFreeCanvas from '@/components/render-free-canvas/TreeRenderFreeCanvas.vue'
-import TableRenderFreeCanvas from '@/components/render-free-canvas/TableRenderFreeCanvas.vue'
-import FormRenderFreeCanvas from '@/components/render-free-canvas/FormRenderFreeCanvas.vue'
-import ButtonRenderFreeCanvas from '@/components/render-free-canvas/ButtonRenderFreeCanvas.vue'
+import TableStandardRenderFreeCanvas from '@/components/render-free-canvas/TableStandardRenderFreeCanvas.vue'
+import FormStandardRenderFreeCanvas from '@/components/render-free-canvas/FormStandardRenderFreeCanvas.vue'
 
 // Props - 当直接使用组件时传入
 interface Props {
@@ -131,18 +130,16 @@ const enabledComponents = computed(() => {
  * 根据组件类型获取渲染组件
  */
 function getComponentRenderer(type: ComponentType) {
-  const rendererMap: Record<ComponentType, any> = {
+  const rendererMap: Record<string, any> = {
     'tree': TreeRenderFreeCanvas,
-    'table': TableRenderFreeCanvas,
-    'form': FormRenderFreeCanvas,
-    'button-group': ButtonRenderFreeCanvas,
-    'search-form': ButtonRenderFreeCanvas, // 暂时用按钮组件代替
+    'table-standard': TableStandardRenderFreeCanvas,
+    'form-standard': FormStandardRenderFreeCanvas,
     'chart': null, // TODO: 待实现
     'tabs': null, // TODO: 待实现
     'card': null, // TODO: 待实现
     'divider': null, // TODO: 待实现
     'spacer': null, // TODO: 待实现
-    'custom': null // TODO: 待实现
+    'custom': null, // TODO: 待实现
   }
 
   return rendererMap[type] || null

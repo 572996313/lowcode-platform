@@ -64,6 +64,7 @@ export interface ComponentInstance {
   id: string                    // 组件唯一ID
   name: string                  // 组件名称（用户自定义）
   type: ComponentType           // 组件类型
+  role?: 'main' | 'linked'     // 组件角色：main=主组件(直接渲染) linked=弹窗组件(由按钮触发)
   position: ComponentPosition   // 位置和尺寸
   config: ComponentSpecificConfig  // 组件特定配置
   style?: ComponentStyle        // 样式覆盖
@@ -100,29 +101,170 @@ export type AnchorPoint =
  * 组件类型
  */
 export type ComponentType =
-  | 'tree'            // 树组件
-  | 'search-form'     // 查询表单
-  | 'table'           // 表格
-  | 'button-group'    // 按钮组
-  | 'form'            // 表单
-  | 'chart'           // 图表
-  | 'tabs'            // 标签页
-  | 'card'            // 卡片
-  | 'divider'         // 分割线
-  | 'spacer'          // 占位符
-  | 'custom'          // 自定义组件
+  | 'tree'              // 树组件
+  | 'table-standard'    // 标准表格（完整表格页面：工具栏+搜索+表格）
+  | 'form-standard'     // 标准表单（完整表单页面：工具栏+表单分组）
+  | 'chart'             // 图表
+  | 'tabs'              // 标签页
+  | 'card'              // 卡片
+  | 'divider'           // 分割线
+  | 'spacer'            // 占位符
+  | 'custom'            // 自定义组件
 
 // ============= 组件特定配置 =============
+
+/**
+ * 标准表格组件配置 - 复用 table-standard API 的 PageConfigResponse
+ */
+export interface TableStandardComponentConfig {
+  pageCode: string
+  pageName: string
+  apiUrl?: string
+  apiMethod?: 'GET' | 'POST'
+  toolbar: {
+    buttons: TableStandardButton[]
+  }
+  searchFields: TableStandardSearchField[]
+  tableColumns: TableStandardColumn[]
+  tableConfig: {
+    border?: boolean
+    stripe?: boolean
+    size?: 'large' | 'default' | 'small'
+    showPagination?: boolean
+    pageSize?: number
+    pageSizes?: number[]
+    showIndex?: boolean
+    showSelection?: boolean
+  }
+}
+
+/**
+ * 标准表格工具栏按钮
+ */
+export interface TableStandardButton {
+  label: string
+  btnType?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | ''
+  icon?: string
+  action: string
+  position?: 'toolbar' | 'table-column'
+  actionConfig?: {
+    type: 'openForm' | 'openTable' | 'route' | 'submit' | 'api' | 'custom'
+    targetCode?: string
+    openMode?: 'dialog' | 'drawer' | 'page'
+    apiUrl?: string
+    routePath?: string
+    routeQuery?: Record<string, string>
+    selectionMode?: 'none' | 'single' | 'multiple'
+    confirmText?: string
+  }
+}
+
+/**
+ * 标准表格搜索字段
+ */
+export interface TableStandardSearchField {
+  field: string
+  label: string
+  type: 'input' | 'select' | 'date' | 'daterange' | 'number'
+  placeholder?: string
+  clearable?: boolean
+  options?: { label: string; value: any }[]
+  width?: number
+  defaultValue?: any
+}
+
+/**
+ * 标准表格列
+ */
+export interface TableStandardColumn {
+  prop?: string
+  label: string
+  width?: number
+  minWidth?: number
+  align?: 'left' | 'center' | 'right'
+  fixed?: 'left' | 'right' | false
+  showOverflowTooltip?: boolean
+  type?: 'text' | 'tag' | 'date' | 'index' | 'selection'
+  tagConfig?: Record<string, { text: string; type: string }>
+}
+
+/**
+ * 标准表单组件配置
+ */
+export interface FormStandardComponentConfig {
+  pageCode: string
+  pageName: string
+  layout: {
+    columns?: number
+    labelWidth?: string
+    labelPosition?: 'left' | 'right' | 'top'
+    size?: 'large' | 'default' | 'small'
+    rowGutter?: number
+  }
+  toolbar: {
+    buttons: FormStandardButton[]
+  }
+  groups: FormStandardGroup[]
+}
+
+/**
+ * 标准表单工具栏按钮
+ */
+export interface FormStandardButton {
+  label: string
+  btnType?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | ''
+  icon?: string
+  action: string
+  showInModes?: ('add' | 'edit' | 'view')[]
+  actionConfig?: TableStandardButton['actionConfig']
+}
+
+/**
+ * 标准表单分组
+ */
+export interface FormStandardGroup {
+  title?: string
+  description?: string
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+  fields: FormStandardField[]
+}
+
+/**
+ * 标准表单字段
+ */
+export interface FormStandardField {
+  field: string
+  label: string
+  type: 'input' | 'textarea' | 'select' | 'number' | 'switch' | 'date' | 'radio' | 'checkbox' | 'datetime' | 'upload'
+  placeholder?: string
+  defaultValue?: any
+  required?: boolean
+  editable?: boolean
+  rules?: any[]
+  options?: { label: string; value: any }[]
+  span?: number
+  disabled?: boolean
+  tooltip?: string
+  min?: number
+  max?: number
+  step?: number
+  uploadConfig?: {
+    accept?: string
+    limit?: number
+    maxSize?: number
+    multiple?: boolean
+    listType?: 'text' | 'picture' | 'picture-card'
+  }
+}
 
 /**
  * 组件特定配置（联合类型）
  */
 export type ComponentSpecificConfig =
   | TreeComponentConfig
-  | SearchFormComponentConfig
-  | TableComponentConfig
-  | ButtonGroupComponentConfig
-  | FormComponentConfig
+  | TableStandardComponentConfig
+  | FormStandardComponentConfig
   | ChartComponentConfig
   | TabsComponentConfig
   | CardComponentConfig
@@ -144,52 +286,6 @@ export interface TreeComponentConfig {
   showIcon?: boolean             // 是否显示图标
   showCheckbox?: boolean         // 是否显示复选框
   draggable?: boolean            // 是否可拖拽
-}
-
-/**
- * 查询表单组件配置
- */
-export interface SearchFormComponentConfig {
-  fields: FormFieldConfig[]
-  buttonAlign?: 'left' | 'center' | 'right'
-  showCollapseButton?: boolean
-  defaultCollapsed?: boolean
-  layoutCols?: number            // 列数（1-4）
-}
-
-/**
- * 表格组件配置
- */
-export interface TableComponentConfig {
-  dataSource: DataSourceConfig
-  columns: TableColumnConfig[]
-  pagination?: boolean
-  pageSize?: number
-  showIndex?: boolean            // 是否显示序号
-  stripe?: boolean               // 斑马纹
-  border?: boolean               // 边框
-  selectionMode?: 'none' | 'single' | 'multiple'
-  rowActions?: RowActionConfig[]
-}
-
-/**
- * 按钮组组件配置
- */
-export interface ButtonGroupComponentConfig {
-  buttons: ButtonConfig[]
-  direction?: 'horizontal' | 'vertical'
-  align?: 'left' | 'center' | 'right'
-  size?: 'large' | 'default' | 'small'
-}
-
-/**
- * 表单组件配置
- */
-export interface FormComponentConfig {
-  fields: FormFieldConfig[]
-  layoutCols?: number
-  labelWidth?: number
-  labelPosition?: 'left' | 'right' | 'top'
 }
 
 /**
@@ -259,101 +355,7 @@ export interface DataSourceConfig {
   refreshInterval?: number        // 刷新间隔（秒）
 }
 
-// ============= 字段/列配置 =============
-
-/**
- * 表单字段配置
- */
-export interface FormFieldConfig {
-  id: string
-  fieldCode: string
-  label: string
-  fieldType: FieldType
-  placeholder?: string
-  defaultValue?: any
-  required?: boolean
-  options?: FieldOption[]
-  width?: number                  // 宽度（栅格占比，1-24）
-  dataSource?: DataSourceConfig   // 下拉等组件的数据源
-}
-
-/**
- * 字段类型
- */
-export type FieldType =
-  | 'input' | 'textarea' | 'select'
-  | 'radio' | 'checkbox' | 'switch'
-  | 'date' | 'datetime' | 'dateRange'
-  | 'number' | 'cascader' | 'upload'
-
-/**
- * 字段选项
- */
-export interface FieldOption {
-  label: string
-  value: any
-  color?: string                 // tag 类型时的颜色
-}
-
-/**
- * 表格列配置
- */
-export interface TableColumnConfig {
-  id: string
-  prop: string
-  label: string
-  type: ColumnType
-  width?: number
-  minWidth?: number
-  align?: 'left' | 'center' | 'right'
-  fixed?: 'left' | 'right'
-  sortable?: boolean
-  formatter?: string             // 格式化表达式
-  dictCode?: string              // 字典编码
-  tagConfig?: Record<string, { text: string; type: string }>
-  linkConfig?: { href: string; target?: string }
-}
-
-/**
- * 列类型
- */
-export type ColumnType =
-  | 'text' | 'number' | 'date' | 'datetime'
-  | 'tag' | 'image' | 'link' | 'switch'
-  | 'progress' | 'rating' | 'color'
-
-/**
- * 按钮配置
- */
-export interface ButtonConfig {
-  id: string
-  name: string
-  type: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'default'
-  icon?: string
-  action: ButtonAction
-  confirmMessage?: string
-}
-
-/**
- * 按钮动作
- */
-export interface ButtonAction {
-  type: 'add' | 'edit' | 'delete' | 'export' | 'refresh' | 'submit' | 'reset' | 'custom'
-  apiEndpoint?: string
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  redirectUrl?: string
-}
-
-/**
- * 行操作配置
- */
-export interface RowActionConfig {
-  id: string
-  name: string
-  type: 'primary' | 'success' | 'warning' | 'danger' | 'text' | 'default'
-  icon?: string
-  action: ButtonAction
-}
+// ============= 标签页/图表配置 =============
 
 /**
  * 标签页配置
@@ -419,7 +421,7 @@ export function createEmptyPageConfig(): FreeCanvasPageConfig {
     pageInfo: {
       pageName: '',
       pageCode: '',
-      pageType: 'list',
+      pageType: 'custom',
       published: false
     },
     canvas: {
@@ -441,17 +443,17 @@ export function createEmptyPageConfig(): FreeCanvasPageConfig {
  */
 export function createComponentInstance(
   type: ComponentType,
-  x: number,
-  y: number
+  role: 'main' | 'linked' = 'main'
 ): ComponentInstance {
   const defaults = getDefaultConfigForType(type)
   return {
-    id: `${type}_${Date.now()}`,
+    id: `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
     name: getDefaultNameForType(type),
     type,
+    role,
     position: {
-      x,
-      y,
+      x: 0,
+      y: 0,
       ...defaults.size
     },
     config: defaults.config,
@@ -468,13 +470,10 @@ function getDefaultConfigForType(type: ComponentType): {
   config: ComponentSpecificConfig
   style?: ComponentStyle
 } {
-  // 更小的默认尺寸，更适合画布布局
-  const sizeMap: Record<ComponentType, { width: number; height: number }> = {
+  const sizeMap: Record<string, { width: number; height: number }> = {
     'tree': { width: 200, height: 300 },
-    'search-form': { width: 600, height: 80 },
-    'table': { width: 700, height: 250 },
-    'button-group': { width: 300, height: 40 },
-    'form': { width: 400, height: 200 },
+    'table-standard': { width: 900, height: 500 },
+    'form-standard': { width: 700, height: 400 },
     'chart': { width: 400, height: 250 },
     'tabs': { width: 600, height: 200 },
     'card': { width: 300, height: 150 },
@@ -483,30 +482,45 @@ function getDefaultConfigForType(type: ComponentType): {
     'custom': { width: 150, height: 150 }
   }
 
-  const configMap: Record<ComponentType, ComponentSpecificConfig> = {
+  const configMap: Record<string, ComponentSpecificConfig> = {
     'tree': {
       dataSource: { type: 'static', static: [] },
       displayField: 'name',
       childrenField: 'children',
       idField: 'id'
     },
-    'search-form': {
-      fields: [],
-      buttonAlign: 'left',
-      layoutCols: 4
+    'table-standard': {
+      pageCode: '',
+      pageName: '标准表格',
+      toolbar: { buttons: [] },
+      searchFields: [],
+      tableColumns: [
+        { prop: 'name', label: '名称', width: 150 },
+        { prop: 'createTime', label: '创建时间', width: 180 }
+      ],
+      tableConfig: {
+        border: true,
+        stripe: true,
+        showPagination: true,
+        pageSize: 10,
+        pageSizes: [10, 20, 50, 100]
+      }
     },
-    'table': {
-      dataSource: { type: 'api', api: { url: '', method: 'GET' } },
-      columns: [],
-      pagination: true,
-      pageSize: 10
+    'form-standard': {
+      pageCode: '',
+      pageName: '标准表单',
+      layout: {
+        columns: 2,
+        labelWidth: '120px',
+        labelPosition: 'right',
+        size: 'default',
+        rowGutter: 20
+      },
+      toolbar: { buttons: [] },
+      groups: [
+        { title: '基本信息', collapsible: false, fields: [] }
+      ]
     },
-    'button-group': {
-      buttons: [],
-      direction: 'horizontal',
-      align: 'left'
-    },
-    'form': { fields: [], layoutCols: 2 },
     'chart': { chartType: 'line', dataSource: { type: 'static', static: [] } },
     'tabs': { tabs: [] },
     'card': { title: '卡片', showHeader: true },
@@ -515,15 +529,13 @@ function getDefaultConfigForType(type: ComponentType): {
     'custom': {}
   }
 
-  const styleMap: Record<ComponentType, ComponentStyle> = {
+  const styleMap: Record<string, ComponentStyle> = {
     'tree': { backgroundColor: '#fff', borderRadius: '4px' },
-    'search-form': { backgroundColor: '#fff', borderRadius: '4px', padding: '16px' },
-    'table': { backgroundColor: '#fff', borderRadius: '4px' },
-    'button-group': {},
-    'form': { backgroundColor: '#fff', borderRadius: '4px', padding: '20px' },
+    'table-standard': { backgroundColor: '#fff', borderRadius: '4px', padding: '12px' },
+    'form-standard': { backgroundColor: '#fff', borderRadius: '4px', padding: '12px' },
     'chart': { backgroundColor: '#fff', borderRadius: '4px', padding: '16px' },
     'tabs': { backgroundColor: '#fff', borderRadius: '4px' },
-    'card': { shadow: 'hover' },
+    'card': {},
     'divider': {},
     'spacer': {},
     'custom': {}
@@ -540,12 +552,10 @@ function getDefaultConfigForType(type: ComponentType): {
  * 获取组件类型的默认名称
  */
 function getDefaultNameForType(type: ComponentType): string {
-  const nameMap: Record<ComponentType, string> = {
+  const nameMap: Record<string, string> = {
     'tree': '树组件',
-    'search-form': '查询表单',
-    'table': '表格',
-    'button-group': '按钮组',
-    'form': '表单',
+    'table-standard': '标准表格',
+    'form-standard': '标准表单',
     'chart': '图表',
     'tabs': '标签页',
     'card': '卡片',
@@ -570,35 +580,19 @@ export function getComponentLibraryItems(): ComponentLibraryItem[] {
       category: 'data'
     },
     {
-      type: 'search-form',
-      label: '查询表单',
-      icon: '🔍',
-      description: '搜索查询条件表单',
-      defaultSize: { width: 600, height: 80 },
-      category: 'form'
-    },
-    {
-      type: 'table',
-      label: '表格',
-      icon: '📊',
-      description: '数据表格展示',
-      defaultSize: { width: 700, height: 250 },
+      type: 'table-standard',
+      label: '标准表格',
+      icon: '📋',
+      description: '完整表格页面（工具栏+搜索+表格）',
+      defaultSize: { width: 900, height: 500 },
       category: 'data'
     },
     {
-      type: 'button-group',
-      label: '按钮组',
-      icon: '🔘',
-      description: '操作按钮组',
-      defaultSize: { width: 300, height: 40 },
-      category: 'form'
-    },
-    {
-      type: 'form',
-      label: '表单',
+      type: 'form-standard',
+      label: '标准表单',
       icon: '📝',
-      description: '数据录入表单',
-      defaultSize: { width: 400, height: 200 },
+      description: '完整表单页面（工具栏+表单分组）',
+      defaultSize: { width: 700, height: 400 },
       category: 'form'
     },
     {
