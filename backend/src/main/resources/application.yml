@@ -74,7 +74,7 @@ spring:
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.lowcode.entity
+  type-aliases-package: com.lowcode.**.entity
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: true
@@ -106,14 +106,14 @@ springdoc:
   group-configs:
     - group: '低代码平台API'
       paths-to-match: '/**'
-      packages-to-scan: com.lowcode.controller
+      packages-to-scan: com.lowcode
 
 # 日志配置
 logging:
   level:
     root: INFO
     com.lowcode: DEBUG
-    com.lowcode.mapper: DEBUG
+    com.lowcode.**.mapper: DEBUG
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
     file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
